@@ -146,5 +146,17 @@ namespace FitnessBot.Infrastructure.DataAccess
             // если у вас есть маппинг Model → Entity, нужно его использовать:
             return model == null ? null : Map(model);
         }
+        public async Task<IReadOnlyList<User>> FindByNameAsync(string namePart)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.Users
+                .Where(u => u.Name.ToLower().Contains(namePart.ToLower()))
+                .OrderBy(u => u.Name)
+                .Take(20)
+                .ToListAsync();
+
+            return models.Select(Map).ToList();
+        }
     }
 }

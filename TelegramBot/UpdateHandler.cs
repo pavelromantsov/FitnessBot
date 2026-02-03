@@ -12,6 +12,7 @@ using FitnessBot.TelegramBot.DTO;
 using FitnessBot.Core.Abstractions;
 using static LinqToDB.Common.Configuration;
 using System;
+using static System.Net.Mime.MediaTypeNames;
 
 
 namespace FitnessBot.TelegramBot
@@ -33,19 +34,20 @@ namespace FitnessBot.TelegramBot
             public event MessageEventHandler? OnHandleUpdateCompleted;
             private readonly IMealRepository _mealRepository;
             private readonly IActivityRepository _activityRepository;
-
+            private readonly AdminStatsService _adminStatsService;
 
         public UpdateHandler(
-    ITelegramBotClient botClient,
-    UserService userService,
-    BmiService bmiService,
-    ActivityService activityService,
-    NutritionService nutritionService,
-    ReportService reportService,
-    IScenarioContextRepository contextRepository,
-    IEnumerable<IScenario> scenarios,
-    IMealRepository mealRepository,
-    IActivityRepository activityRepository)
+            ITelegramBotClient botClient,
+            UserService userService,
+            BmiService bmiService,
+            ActivityService activityService,
+            NutritionService nutritionService,
+            ReportService reportService,
+            IScenarioContextRepository contextRepository,
+            IEnumerable<IScenario> scenarios,
+            IMealRepository mealRepository,
+            IActivityRepository activityRepository,
+            AdminStatsService adminStatsService)
         {
             _botClient = botClient;
             _userService = userService;
@@ -57,6 +59,7 @@ namespace FitnessBot.TelegramBot
             _scenarios = scenarios.ToList();
             _mealRepository = mealRepository;
             _activityRepository = activityRepository;
+            _adminStatsService = adminStatsService;
         }
 
         // ---------------- IUpdateHandler ----------------
@@ -184,6 +187,55 @@ namespace FitnessBot.TelegramBot
                     await HelpCommand(chatId, ct);
                     break;
 
+                case "/admin_users":
+                    if (!IsAdmin(user))
+                    {
+                        await _botClient.SendMessage(
+                            chatId,
+                            "Эта команда доступна только администратору.",
+                            cancellationToken: ct);
+                        break;
+                    }
+
+                    await AdminUsersCommand(chatId, ct);
+                    break;
+
+                case "/admin_user":
+                    if (!IsAdmin(user))
+                    {
+                        await _botClient.SendMessage(
+                            chatId,
+                            "Эта команда доступна только администратору.",
+                            cancellationToken: ct);
+                        break;
+                    }
+
+                    await AdminUserDetailsCommand(chatId, message.Text, ct);
+                    break;
+
+                case "/make_admin":
+                    await MakeAdminCommand(chatId, user, message.Text, ct);
+                    break;
+
+                case "/make_user":
+                    await MakeUserCommand(chatId, user, message.Text, ct);
+                    break;
+
+                case "/admin_find":
+                    await AdminFindUserCommand(chatId, user, message.Text, ct);
+                    break;
+
+                case "/admin_activity":
+                    await AdminActivityCommand(chatId, user, ct);
+                    break;
+
+                case "/admin_stats":
+                    await AdminStatsCommand(chatId, user, ct);
+                    break;
+
+                case "/whoami":
+                    await WhoAmICommand(chatId, user, ct);
+                    break;
 
                 default:
                     await _botClient.SendMessage(
@@ -306,8 +358,50 @@ namespace FitnessBot.TelegramBot
 
                     return;
                 }
+                //назначение админа
+                if (data.StartsWith("make_admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dto = AdminUserCallbackDto.FromString(data);
 
-                // 3. Дефолт для всех остальных callback'ов
+                    // текущий вызывающий
+                    var caller = await _userService.GetByTelegramIdAsync(callbackQuery.From.Id);
+                    if (caller == null || !IsAdmin(caller))
+                    {
+                        await _botClient.AnswerCallbackQuery(
+                            callbackQuery.Id,
+                            "Нет прав для назначения админов.",
+                            cancellationToken: ct);
+                        return;
+                    }
+
+                    var ok = await _userService.MakeAdminAsync(dto.TelegramId);
+                    if (!ok)
+                    {
+                        await _botClient.AnswerCallbackQuery(
+                            callbackQuery.Id,
+                            "Пользователь не найден.",
+                            cancellationToken: ct);
+                        return;
+                    }
+
+                    await _botClient.AnswerCallbackQuery(
+                        callbackQuery.Id,
+                        $"Пользователь {dto.TelegramId} назначен администратором.",
+                        cancellationToken: ct);
+
+                    if (callbackQuery.Message != null)
+                    {
+                        await _botClient.EditMessageText(
+                            callbackQuery.Message.Chat.Id,
+                            callbackQuery.Message.MessageId,
+                            $"Пользователь {dto.TelegramId} назначен администратором.",
+                            cancellationToken: ct);
+                    }
+
+                    return;
+                }
+
+                // 4. Дефолт для всех остальных callback'ов
                 await _botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
                     "Неизвестное действие.",
@@ -526,6 +620,319 @@ namespace FitnessBot.TelegramBot
                         cancellationToken: ct);
                 }
             }
+        // ---------------- Администратор ----------------
+        private static bool IsAdmin(DomainUser user) =>
+                 user.Role == UserRole.Admin;
+
+        private async Task AdminUsersCommand(long chatId, CancellationToken ct)
+        {
+            var users = await _userService.GetAllAsync();
+
+            if (users.Count == 0)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Пользователей пока нет.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var lines = users
+                .OrderByDescending(u => u.LastActivityAt)
+                .Select(u =>
+                    $"Id={u.Id}, Tg={u.TelegramId}, " +
+                    $"Имя={u.Name}, Роль={u.Role}, " +
+                    $"Город={u.City ?? "-"}, Возраст={u.Age?.ToString() ?? "-"}, " +
+                    $"Последняя активность={u.LastActivityAt:dd.MM HH:mm}");
+
+            var text = "Список пользователей:\n" + string.Join("\n", lines);         
+            await _botClient.SendMessage(
+                chatId,
+                text,
+                cancellationToken: ct);
+        }
+
+        private async Task AdminUserDetailsCommand(long chatId, string commandText, CancellationToken ct)
+        {
+            var parts = commandText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2 || !long.TryParse(parts[1], out var telegramId))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Формат: /admin_user <telegramId>",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var user = await _userService.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    $"Пользователь с TelegramId={telegramId} не найден.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var text =
+                $"Пользователь:\n" +
+                $"Id: {user.Id}\n" +
+                $"TelegramId: {user.TelegramId}\n" +
+                $"Имя: {user.Name}\n" +
+                $"Роль: {user.Role}\n" +
+                $"Возраст: {user.Age?.ToString() ?? "-"}\n" +
+                $"Город: {user.City ?? "-"}\n" +
+                $"Создан: {user.CreatedAt:dd.MM.yyyy HH:mm}\n" +
+                $"Последняя активность: {user.LastActivityAt:dd.MM.yyyy HH:mm}\n" +
+                $"Завтрак: {user.BreakfastTime?.ToString(@"hh\:mm") ?? "-"}\n" +
+                $"Обед: {user.LunchTime?.ToString(@"hh\:mm") ?? "-"}\n" +
+                $"Ужин: {user.DinnerTime?.ToString(@"hh\:mm") ?? "-"}";
+
+            await _botClient.SendMessage(
+                chatId,
+                text,
+                cancellationToken: ct);
+        }
+        
+        private async Task MakeAdminCommand(long chatId, DomainUser currentUser, string commandText, CancellationToken ct)
+        {
+            if (!IsAdmin(currentUser))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Эта команда доступна только администратору.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var parts = commandText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2 || !long.TryParse(parts[1], out var targetTelegramId))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Формат: /make_admin <telegramId>",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var ok = await _userService.MakeAdminAsync(targetTelegramId);
+            if (!ok)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    $"Пользователь с TelegramId={targetTelegramId} не найден.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            await _botClient.SendMessage(
+                chatId,
+                $"Пользователь с TelegramId={targetTelegramId} назначен администратором.",
+                cancellationToken: ct);
+        }
+
+        private async Task MakeUserCommand(long chatId, DomainUser currentUser, string commandText, CancellationToken ct)
+        {
+            if (!IsAdmin(currentUser))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Эта команда доступна только администратору.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var parts = commandText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2 || !long.TryParse(parts[1], out var targetTelegramId))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Формат: /make_user <telegramId>",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var ok = await _userService.MakeUserAsync(targetTelegramId);
+            if (!ok)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    $"Пользователь с TelegramId={targetTelegramId} не найден.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            await _botClient.SendMessage(
+                chatId,
+                $"Пользователь с TelegramId={targetTelegramId} теперь обычный пользователь.",
+                cancellationToken: ct);
+        }
+
+        private async Task AdminFindUserCommand(long chatId, DomainUser currentUser, string commandText, CancellationToken ct)
+        {
+            if (!IsAdmin(currentUser))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Эта команда доступна только администратору.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var parts = commandText.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Формат: /admin_find <часть имени>",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var namePart = parts[1];
+
+            var users = await _userService.FindByNameAsync(namePart);
+            if (users.Count == 0)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    $"Пользователи с именем, содержащим \"{namePart}\", не найдены.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var rows = users.Select(u =>
+                new[]
+                {
+            InlineKeyboardButton.WithCallbackData(
+                $"{u.Name} (TgId={u.TelegramId}, роль={u.Role})",
+                new AdminUserCallbackDto("make_admin", u.TelegramId).ToString())
+                }
+            ).ToArray();
+
+            var keyboard = new InlineKeyboardMarkup(rows);
+
+            await _botClient.SendMessage(
+                chatId,
+                "Выберите пользователя, которого хотите сделать администратором:",
+                replyMarkup: keyboard,
+                cancellationToken: ct);
+        }
+        private async Task AdminActivityCommand(long chatId, DomainUser currentUser, CancellationToken ct)
+        {
+            if (!IsAdmin(currentUser))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Эта команда доступна только администратору.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var users = await _userService.GetAllAsync();
+            if (users.Count == 0)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Пользователей пока нет.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+
+            var lines = users
+                .OrderByDescending(u => u.LastActivityAt)
+                .Select(u =>
+                {
+                    var sinceMinutes = (now - u.LastActivityAt).TotalMinutes;
+                    string status =
+                        sinceMinutes < 5 ? "онлайн (<5 мин назад)" :
+                        sinceMinutes < 60 ? "недавно (до часа назад)" :
+                        sinceMinutes < 24 * 60 ? "сегодня" :
+                        "давно";
+
+                    return
+                        $"Id={u.Id}, Tg={u.TelegramId}, Имя={u.Name},\n" +
+                        $"  Последняя активность: {u.LastActivityAt:dd.MM.yyyy HH:mm} UTC ({status})";
+                });
+
+            var text = "Активность пользователей:\n\n" + string.Join("\n\n", lines);
+
+            await _botClient.SendMessage(
+                chatId,
+                text,
+                cancellationToken: ct);
+        }
+        private async Task AdminStatsCommand(long chatId, DomainUser currentUser, CancellationToken ct)
+        {
+            if (!IsAdmin(currentUser))
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "Эта команда доступна только администратору.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var today = DateTime.UtcNow.Date;
+
+            var dailyActive = await _adminStatsService.GetDailyActiveUsersAsync(today);
+            var ageDist = await _adminStatsService.GetAgeDistributionAsync(); 
+            var geoDist = await _adminStatsService.GetGeoDistributionAsync(); 
+            var totalContent = await _adminStatsService.GetTotalContentVolumeAsync();
+
+            string FormatAge()
+            {
+                if (ageDist.Count == 0) return "нет данных";
+                return string.Join(", ", ageDist
+                    .OrderBy(kv => kv.Key)
+                    .Select(kv => $"{kv.Key}: {kv.Value}"));
+            }
+
+            string FormatGeo()
+            {
+                if (geoDist.Count == 0) return "нет данных";
+                return string.Join(", ", geoDist
+                    .OrderByDescending(kv => kv.Value)
+                    .Select(kv => $"{(string.IsNullOrWhiteSpace(kv.Key) ? "(не указан)" : kv.Key)}: {kv.Value}"));
+            }
+
+            var text =
+                $"Админ-статистика:\n" +
+                $"\n" +
+                $"Активные пользователей за сегодня ({today:dd.MM.yyyy}): {dailyActive}\n" +
+                $"Общий объём контента: {totalContent} байт\n" +
+                $"\n" +
+                $"Возрастная структура (возраст: количество):\n" +
+                $"{FormatAge()}\n" +
+                $"\n" +
+                $"География (город: количество):\n" +
+                $"{FormatGeo()}";
+
+            await _botClient.SendMessage(
+                chatId,
+                text,
+                cancellationToken: ct);
+        }
+
+        private async Task WhoAmICommand(long chatId, DomainUser currentUser, CancellationToken ct)
+        {
+            var text =
+                "Текущая учетная запись:\n" +
+                $"\n" +
+                $"TelegramId: {currentUser.TelegramId}\n" +
+                $"Роль: {currentUser.Role}";
+
+            await _botClient.SendMessage(
+                chatId,
+                text,
+                cancellationToken: ct);
+        }
+
+
+
+        // ---------------- Обработчик ошибок ----------------
         public Task HandleErrorAsync(
             ITelegramBotClient botClient,
             Exception exception,

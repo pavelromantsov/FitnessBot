@@ -44,5 +44,31 @@ namespace FitnessBot.Core.Services
         public Task<IReadOnlyList<User>> GetAllAsync() => _users.GetAllAsync();
 
         public Task<User> SaveAsync(User user) => _users.SaveAsync(user);
+
+        public async Task<bool> MakeAdminAsync(long telegramId)
+        {
+            var user = await _users.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+                return false;
+
+            user.Role = UserRole.Admin;
+            await _users.SaveAsync(user);
+            return true;
+        }
+
+        public async Task<bool> MakeUserAsync(long telegramId)
+        {
+            var user = await _users.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+                return false;
+
+            user.Role = UserRole.User;
+            await _users.SaveAsync(user);
+            return true;
+        }
+
+        public Task<IReadOnlyList<User>> FindByNameAsync(string namePart) =>
+                _users.FindByNameAsync(namePart);
+
     }
 }

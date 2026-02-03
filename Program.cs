@@ -44,6 +44,8 @@ namespace FitnessBot
             var activityService = new ActivityService(activityRepo);
             var nutritionService = new NutritionService(nutritionRepo);
             var reportService = new ReportService(activityService, nutritionService);
+            var adminStatsRepo = new PgAdminStatsRepository(dataContextFactory);
+            var adminStatsService = new AdminStatsService(adminStatsRepo);
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
@@ -71,7 +73,8 @@ namespace FitnessBot
                 contextRepository,
                 scenarios,
                 nutritionRepo,
-                activityRepo);
+                activityRepo,
+                adminStatsService);
 
             var receiverOptions = new ReceiverOptions
             {
