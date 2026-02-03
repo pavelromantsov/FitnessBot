@@ -33,7 +33,9 @@ namespace FitnessBot.Infrastructure.DataAccess
             LastActivityAt = m.LastActivityAt,
             BreakfastTime = m.BreakfastTime,
             LunchTime = m.LunchTime,
-            DinnerTime = m.DinnerTime
+            DinnerTime = m.DinnerTime,
+            HeightCm = m.HeightCm,
+            WeightKg = m.WeightKg
         };
 
         private static UserModel Map(User u) => new UserModel
@@ -48,7 +50,9 @@ namespace FitnessBot.Infrastructure.DataAccess
             LastActivityAt = u.LastActivityAt,
             BreakfastTime = u.BreakfastTime,
             LunchTime = u.LunchTime,
-            DinnerTime = u.DinnerTime
+            DinnerTime = u.DinnerTime,
+            HeightCm= u.HeightCm,
+            WeightKg= u.WeightKg
         };
 
         public async Task<User?> GetByTelegramIdAsync(long telegramId)
@@ -87,6 +91,8 @@ namespace FitnessBot.Infrastructure.DataAccess
                 model = Map(user);
                 model.CreatedAt = DateTime.UtcNow;
                 model.LastActivityAt = DateTime.UtcNow;
+                model.HeightCm=user.HeightCm;
+                model.WeightKg=user.WeightKg;
 
                 model.Id = await db.InsertWithInt64IdentityAsync(model);
             }
@@ -102,6 +108,8 @@ namespace FitnessBot.Infrastructure.DataAccess
                 model.BreakfastTime = user.BreakfastTime;
                 model.LunchTime = user.LunchTime;
                 model.DinnerTime = user.DinnerTime;
+                model.HeightCm = user.HeightCm;
+                model.WeightKg = user.WeightKg;
                 await db.UpdateAsync(model);
             }
 

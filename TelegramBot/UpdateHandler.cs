@@ -1,18 +1,14 @@
-﻿using FitnessBot.Core.Entities;
-using System.Threading;
+﻿using FitnessBot.Core.Abstractions;
+using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using FitnessBot.Scenarios;
+using FitnessBot.TelegramBot.DTO;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using DomainUser = FitnessBot.Core.Entities.User;
-using FitnessBot.TelegramBot.DTO;
-using FitnessBot.Core.Abstractions;
-using static LinqToDB.Common.Configuration;
-using System;
-using static System.Net.Mime.MediaTypeNames;
 
 
 namespace FitnessBot.TelegramBot
@@ -122,15 +118,34 @@ namespace FitnessBot.TelegramBot
                     return;
                 }
 
-                // регистрация/обновление пользователя
-                var user = await _userService.RegisterOrUpdateAsync(
-                    telegramId,
-                    firstName,
-                    null,
-                    message.Chat.Username);
+            // регистрация/обновление пользователя
+            var user = await _userService.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+            {
+                user = await _userService.RegisterOrUpdateAsync(telegramId, firstName, null, message.Chat.Username);
 
-                // 1. проверяем активный сценарий
-                var context = await _contextRepository.GetContext(user.Id, ct);
+                var regContext = new ScenarioContext
+                {
+                    UserId = user.Id,
+                    CurrentScenario = ScenarioType.Registration,
+                    CurrentStep = 0
+                };
+
+
+                await _contextRepository.SetContext(user.Id, regContext, ct);
+
+                var scenario = GetScenario(ScenarioType.Registration);
+                await scenario.HandleMessageAsync(_botClient, regContext, message, ct);
+                return;
+            }
+            else
+            {
+                // обновляем имя / lastActivity
+                user = await _userService.RegisterOrUpdateAsync(telegramId, firstName, null, message.Chat.Username);
+            }
+
+            // 1. проверяем активный сценарий
+            var context = await _contextRepository.GetContext(user.Id, ct);
 
                 if (message.Text.Equals("/cancel", StringComparison.OrdinalIgnoreCase) && context != null)
                 {

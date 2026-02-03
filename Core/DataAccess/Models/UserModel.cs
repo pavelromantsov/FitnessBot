@@ -43,5 +43,12 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("dinner_time")]
         public TimeSpan? DinnerTime { get; set; }
+
+        [Column("heightcm"), NotNull]
+        public double? HeightCm { get; set; }
+
+        [Column("weightkg"), NotNull]
+        public double? WeightKg { get; set; }
+
     }
 }

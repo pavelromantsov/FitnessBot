@@ -70,5 +70,6 @@ namespace FitnessBot.Core.Services
         public Task<IReadOnlyList<User>> FindByNameAsync(string namePart) =>
                 _users.FindByNameAsync(namePart);
 
+        public Task<User?> GetByIdAsync(long id) => _users.GetByIdAsync(id);
     }
 }

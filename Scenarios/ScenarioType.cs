@@ -14,5 +14,6 @@ namespace FitnessBot.Scenarios
         Meal = 3,
         CustomCalories = 4,
         MealTimeSetup = 5,
+        Registration = 6
     }
 }

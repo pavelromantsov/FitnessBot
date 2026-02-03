@@ -52,9 +52,10 @@ namespace FitnessBot
             // сценарии
             var scenarios = new IScenario[]
             {
-    new BmiScenario(bmiService),
-    new CustomCaloriesScenario(nutritionService, userService),
-    new MealTimeSetupScenario(userService),
+                new BmiScenario(bmiService),
+                new CustomCaloriesScenario(nutritionService, userService),
+                new MealTimeSetupScenario(userService),
+                new RegistrationScenario(userService, bmiService)
             };
 
             // 5. Background Tasks

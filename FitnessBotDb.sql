@@ -173,3 +173,11 @@ create table if not exists notifications
 
 create index if not exists idx_notifications_user_scheduled
     on notifications (user_id, scheduled_at);
+
+-- =============================================
+-- Alter table: users (add registration)
+-- =============================================
+
+    alter table users
+    add column if not exists heightcm double precision,
+    add column if not exists weightkg double precision;
