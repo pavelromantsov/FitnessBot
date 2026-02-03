@@ -52,10 +52,13 @@ namespace FitnessBot.Core.Services
         }
         public async Task AddMealAsync(Meal meal, CancellationToken ct = default)
         {
-            
+
             if (meal.Calories <= 0) throw new ArgumentException("Калории должны быть > 0");
             await _meals.AddAsync(meal);
         }
-    }
 
+        public Task<IReadOnlyList<Meal>> GetMealsByUserAndPeriodAsync
+            (long userId, DateTime from, DateTime to, CancellationToken ct) =>
+            _meals.GetByUserAndPeriodAsync(userId, from, to);
+    }
 }

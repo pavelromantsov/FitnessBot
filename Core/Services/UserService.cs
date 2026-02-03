@@ -42,5 +42,7 @@ namespace FitnessBot.Core.Services
         }
 
         public Task<IReadOnlyList<User>> GetAllAsync() => _users.GetAllAsync();
+
+        public Task<User> SaveAsync(User user) => _users.SaveAsync(user);
     }
 }

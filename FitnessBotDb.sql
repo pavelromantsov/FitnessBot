@@ -147,3 +147,29 @@ create table if not exists content_items
 
 create index if not exists idx_content_items_user
     on content_items (user_id);
+
+
+-- =============================================
+-- Alter table: users
+-- =============================================
+    alter table users
+    add column breakfast_time time,
+    add column lunch_time time,
+    add column dinner_time time;
+
+-- =============================================
+-- Table: notifications
+-- =============================================
+create table if not exists notifications
+(
+    id bigserial primary key,
+    user_id bigint not null references users (id) on delete cascade,
+    type text not null,               -- BreakfastReminder / LunchReminder / DinnerReminder
+    text text not null,
+    scheduled_at timestamptz not null,
+    is_sent boolean not null default false,
+    sent_at timestamptz
+);
+
+create index if not exists idx_notifications_user_scheduled
+    on notifications (user_id, scheduled_at);

@@ -28,5 +28,6 @@ namespace FitnessBot.Infrastructure.DataAccess
         public ITable<ErrorLogModel> ErrorLogs => this.GetTable<ErrorLogModel>();    // error_logs[file:139]
         public ITable<ChangeLogModel> ChangeLogs => this.GetTable<ChangeLogModel>();   // change_logs[file:139]
         public ITable<ContentItemModel> ContentItems => this.GetTable<ContentItemModel>(); // content_items[file:139]
+        public ITable<NotificationModel> Notifications => this.GetTable<NotificationModel>();
     }
 }

@@ -10,6 +10,7 @@ using LinqToDB;
 using LinqToDB.Data;
 using FitnessBot.Core.DataAccess.Models;
 using static LinqToDB.Internal.Reflection.Methods;
+using FitnessBot.Core.Services;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
@@ -18,7 +19,8 @@ namespace FitnessBot.Infrastructure.DataAccess
     IBmiRepository,
     IErrorLogRepository,
     IChangeLogRepository,
-    IContentItemRepository
+    IContentItemRepository,
+    INotificationRepository
     {
         private readonly Func<PgDataContext> _connectionFactory;
 
@@ -229,6 +231,60 @@ namespace FitnessBot.Infrastructure.DataAccess
             await using var db = _connectionFactory();
             return await db.ContentItems
                        .SumAsync(ci => (long?)ci.SizeBytes) ?? 0L;
+        }
+
+        private static NotificationModel Map(Notification n) => new()
+        {
+            Id = n.Id,
+            UserId = n.UserId,
+            Type = n.Type,
+            Text = n.Text,
+            ScheduledAt = n.ScheduledAt,
+            IsSent = n.IsSent,
+            SentAt = n.SentAt
+        };
+
+        private static Notification Map(NotificationModel m) => new()
+        {
+            Id = m.Id,
+            UserId = m.UserId,
+            Type = m.Type,
+            Text = m.Text,
+            ScheduledAt = m.ScheduledAt,
+            IsSent = m.IsSent,
+            SentAt = m.SentAt
+        };
+
+        public async Task<long> AddAsync(Notification notification)
+        {
+            await using var db = _connectionFactory();
+            var model = Map(notification);
+            model.Id = await db.InsertWithInt64IdentityAsync(model);
+            notification.Id = model.Id;
+            return model.Id;
+        }
+
+        public async Task MarkSentAsync(long id, DateTime sentAt)
+        {
+            await using var db = _connectionFactory();
+
+            await db.Notifications
+                .Where(n => n.Id == id)
+                .Set(n => n.IsSent, true)
+                .Set(n => n.SentAt, sentAt)
+                .UpdateAsync();
+        }
+
+        public async Task<IReadOnlyList<Notification>> GetScheduledAsync(DateTime beforeUtc)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.Notifications
+                .Where(n => !n.IsSent && n.ScheduledAt <= beforeUtc)
+                .OrderBy(n => n.ScheduledAt)
+                .ToListAsync();
+
+            return models.Select(Map).ToList();
         }
     }
 }

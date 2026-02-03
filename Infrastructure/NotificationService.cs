@@ -1,16 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
+using FitnessBot.Core.Entities;
+using FitnessBot.Core.Services;
+using Telegram.Bot.Types;
 
-namespace FitnessBot.Core.Services
+namespace FitnessBot.Infrastructure
 {
     public class NotificationService
     {
+        private readonly INotificationRepository _notifications;
         private readonly IDailyGoalRepository _goals;
         private readonly IUserRepository _users;
+
+        public NotificationService(INotificationRepository notifications)
+        {
+            _notifications = notifications;
+        }
+
+        public Task<long> ScheduleAsync(
+            long userId,
+            string type,
+            string text,
+            DateTime scheduledAt,
+            CancellationToken ct = default)
+        {
+            var n = new Notification
+            {
+                UserId = userId,
+                Type = type,
+                Text = text,
+                ScheduledAt = scheduledAt,
+                IsSent = false
+            };
+
+            return _notifications.AddAsync(n);
+        }
+
+        public Task<IReadOnlyList<Notification>> GetDueAsync(DateTime beforeUtc) =>
+            _notifications.GetScheduledAsync(beforeUtc);
+
+        public Task MarkSentAsync(long id, DateTime sentAt) =>
+            _notifications.MarkSentAsync(id, sentAt);
 
         public NotificationService(IDailyGoalRepository goals, IUserRepository users)
         {

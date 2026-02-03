@@ -172,6 +172,10 @@ namespace FitnessBot.TelegramBot
                     await TodayCommand(chatId, user, ct); // user: DomainUser
                     break;
 
+                case "/setmeals":
+                    await StartMealTimeSetupAsync(chatId, user, ct);
+                    break;
+
                 case "/report":
                     await ReportCommand(chatId, user, ct);
                     break;
@@ -356,6 +360,7 @@ namespace FitnessBot.TelegramBot
                     "/bmi вес рост — быстрый расчёт ИМТ (кг, см)\n" +
                     "/bmi_scenario — пошаговый расчёт ИМТ\n" +
                     "/today — калории и БЖУ за сегодня\n" +
+                    "/setmeals - установить напоминания\n"+
                     "/report — краткий отчёт за сегодня\n" +
                     "/cancel — прервать текущий сценарий",
                     cancellationToken: ct);
@@ -478,6 +483,22 @@ namespace FitnessBot.TelegramBot
             await _botClient.SendMessage(
                 chatId,
                 summary,
+                cancellationToken: ct);
+        }
+        private async Task StartMealTimeSetupAsync(long chatId, DomainUser user, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.MealTimeSetup,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            await _botClient.SendMessage(
+                chatId,
+                "Введите время завтрака в формате HH:mm, например: 08:00",
                 cancellationToken: ct);
         }
 

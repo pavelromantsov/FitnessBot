@@ -8,6 +8,8 @@ using FitnessBot.Core.Services;
 using FitnessBot.Infrastructure.DataAccess;
 using FitnessBot.Scenarios;
 using FitnessBot.TelegramBot;
+using FitnessBot.BackgroundTasks;
+using FitnessBot.Infrastructure;
 
 namespace FitnessBot
 {
@@ -31,7 +33,8 @@ namespace FitnessBot
 
             // 3. Репозитории и сервисы
             var userRepo = new PgUserRepository(dataContextFactory);
-            var notificationRepo = new PgNotificationRepository(dataContextFactory);
+            var notificationRepo = new PgNotificationRepository(dataContextFactory);           
+            var notificationService = new NotificationService(notificationRepo);
 
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
@@ -43,14 +46,20 @@ namespace FitnessBot
             var reportService = new ReportService(activityService, nutritionService);
 
             var contextRepository = new InMemoryScenarioContextRepository();
+
+            // сценарии
             var scenarios = new IScenario[]
             {
-            new BmiScenario(bmiService),
-            new CustomCaloriesScenario(nutritionService, userService),
-                // сюда добавите другие сценарии (цели, питание и т.д.)
+    new BmiScenario(bmiService),
+    new CustomCaloriesScenario(nutritionService, userService),
+    new MealTimeSetupScenario(userService),
             };
 
-            // 4. Telegram bot + UpdateHandler
+            // 5. Background Tasks
+            var backgroundRunner = new BackgroundTaskRunner();
+            backgroundRunner.AddTask(new MealReminderBackgroundTask(userService, nutritionService, notificationService));
+
+            // 6. Telegram bot + UpdateHandler
             var botClient = new TelegramBotClient(botToken);
             var updateHandler = new UpdateHandler(
                 botClient,
@@ -61,9 +70,8 @@ namespace FitnessBot
                 reportService,
                 contextRepository,
                 scenarios,
-                nutritionRepo,   // IMealRepository
-                activityRepo     // IActivityRepository
-                );
+                nutritionRepo,
+                activityRepo);
 
             var receiverOptions = new ReceiverOptions
             {
@@ -72,6 +80,10 @@ namespace FitnessBot
 
             var cts = new CancellationTokenSource();
 
+            // запускаем фоновые задачи
+            backgroundRunner.StartTasks(cts.Token);
+
+            // запускаем бота
             botClient.StartReceiving(
                 updateHandler,
                 receiverOptions,
@@ -82,6 +94,10 @@ namespace FitnessBot
 
             Console.ReadLine();
             cts.Cancel();
+
+            // корректно останавливаем фоновые задачи
+            await backgroundRunner.StopTasks(CancellationToken.None);
+
         }
     }
 }

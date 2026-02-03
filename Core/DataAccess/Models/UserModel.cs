@@ -34,5 +34,14 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("last_activity_at"), NotNull]
         public DateTime LastActivityAt { get; set; }
+
+        [Column("breakfast_time")]
+        public TimeSpan? BreakfastTime { get; set; }
+
+        [Column("lunch_time")]
+        public TimeSpan? LunchTime { get; set; }
+
+        [Column("dinner_time")]
+        public TimeSpan? DinnerTime { get; set; }
     }
 }

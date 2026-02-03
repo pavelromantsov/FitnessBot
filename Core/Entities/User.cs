@@ -24,5 +24,8 @@ namespace FitnessBot.Core.Entities
         public string? City { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastActivityAt { get; set; } = DateTime.UtcNow;
+        public TimeSpan? BreakfastTime { get; set; }
+        public TimeSpan? LunchTime { get; set; }
+        public TimeSpan? DinnerTime { get; set; }
     }
 }
