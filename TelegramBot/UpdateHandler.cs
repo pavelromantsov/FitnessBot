@@ -32,6 +32,10 @@ namespace FitnessBot.TelegramBot
             private readonly IActivityRepository _activityRepository;
             private readonly AdminStatsService _adminStatsService;
 
+            private readonly ChartService _chartService;
+            private readonly ChartDataService _chartDataService;
+            private readonly ChartImageService _chartImageService;
+
         public UpdateHandler(
             ITelegramBotClient botClient,
             UserService userService,
@@ -43,7 +47,10 @@ namespace FitnessBot.TelegramBot
             IEnumerable<IScenario> scenarios,
             IMealRepository mealRepository,
             IActivityRepository activityRepository,
-            AdminStatsService adminStatsService)
+            AdminStatsService adminStatsService,
+            ChartService chartService,             
+            ChartDataService chartDataService,
+            ChartImageService chartImageService)
         {
             _botClient = botClient;
             _userService = userService;
@@ -56,6 +63,10 @@ namespace FitnessBot.TelegramBot
             _mealRepository = mealRepository;
             _activityRepository = activityRepository;
             _adminStatsService = adminStatsService;
+            _chartService = chartService;
+            _chartDataService = chartDataService;
+            _chartImageService = chartImageService;
+            _chartImageService = chartImageService;
         }
 
         // ---------------- IUpdateHandler ----------------
@@ -208,6 +219,22 @@ namespace FitnessBot.TelegramBot
 
                 case "/report":
                     await ReportCommand(chatId, user, ct);
+                    break;
+
+                case "/chart_calories":
+                    await ChartCaloriesCommand(chatId, user, ct);
+                    break;
+
+                case "/chart_steps":
+                    await ChartStepsCommand(chatId, user, ct);
+                    break;
+
+                case "/chart_macros":
+                    await ChartMacrosCommand(chatId, user, ct);
+                    break;
+
+                case "/charts":
+                    await ChartsMenuCommand(chatId, ct);
                     break;
 
                 case "/help":
@@ -431,7 +458,6 @@ namespace FitnessBot.TelegramBot
                     return;
                 }
 
-                // ========== ВОТ ЗДЕСЬ ДОБАВЬТЕ НОВЫЙ БЛОК ==========
                 // 4. Настройки напоминаний об активности
                 if (data.StartsWith("activity_reminders_", StringComparison.OrdinalIgnoreCase))
                 {
@@ -588,9 +614,53 @@ namespace FitnessBot.TelegramBot
 
                     return;
                 }
-                // ========== КОНЕЦ НОВОГО БЛОКА ==========
+                // 5. Обработка графиков
+                if (data.StartsWith("chart_", StringComparison.OrdinalIgnoreCase))
+                {
+                    var user = await _userService.GetByTelegramIdAsync(callbackQuery.From.Id);
+                    if (user == null)
+                    {
+                        await _botClient.AnswerCallbackQuery(
+                            callbackQuery.Id,
+                            "Пользователь не найден.",
+                            cancellationToken: ct);
+                        return;
+                    }
 
-                // 5. Дефолт для всех остальных callback'ов
+                    await _botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
+
+                    if (callbackQuery.Message != null)
+                    {
+                        var chatId = callbackQuery.Message.Chat.Id;
+
+                        switch (data)
+                        {
+                            case "chart_cal_7":
+                                await ChartCaloriesCommand(chatId, user, 7, ct);
+                                break;
+                            case "chart_cal_14":
+                                await ChartCaloriesCommand(chatId, user, 14, ct);
+                                break;
+                            case "chart_steps_7":
+                                await ChartStepsCommand(chatId, user, 7, ct);
+                                break;
+                            case "chart_steps_14":
+                                await ChartStepsCommand(chatId, user, 14, ct);
+                                break;
+                            case "chart_macros_7":
+                                await ChartMacrosCommand(chatId, user, 7, ct);
+                                break;
+                            case "chart_macros_14":
+                                await ChartMacrosCommand(chatId, user, 14, ct);
+                                break;
+                        }
+                    }
+
+                    return;
+                }
+
+
+                // 6. Дефолт для всех остальных callback'ов
                 await _botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
                     "Неизвестное действие.",
@@ -627,6 +697,10 @@ namespace FitnessBot.TelegramBot
         new KeyboardButton[] { "/activity_reminders" },
         new KeyboardButton[] { "/edit_profile" },
         new KeyboardButton[] { "/report" },
+        new KeyboardButton[] {"/chart_calories" },
+        new KeyboardButton[] { "/chart_steps" },
+        new KeyboardButton[] { "/chart_macros" }, 
+        new KeyboardButton[] {"/charts" },
         new KeyboardButton[] { "/whoami" },
         new KeyboardButton[] { "/help" }
     })
@@ -654,6 +728,7 @@ namespace FitnessBot.TelegramBot
                     "/setgoal — установить ежедневную цель 🎯\n"+
                     "/activity_reminders — настроить напоминания об активности 🏃\n" +
                     "/report — краткий отчёт за сегодня\n" +
+                    "/charts — графики и статистика 📊\n" +
                     "/cancel — прервать текущий сценарий",
                     cancellationToken: ct);
             }
@@ -887,6 +962,213 @@ namespace FitnessBot.TelegramBot
                 replyMarkup: keyboard,
                 cancellationToken: ct);
         }
+        //----------------Графики---------------------
+        // Перегрузка без указания дней (по умолчанию 7)
+        private async Task ChartCaloriesCommand(long chatId, DomainUser user, CancellationToken ct)
+        {
+            await ChartCaloriesCommand(chatId, user, 7, ct);
+        }
+
+        // Основной метод с указанием дней
+        private async Task ChartCaloriesCommand(long chatId, DomainUser user, int days, CancellationToken ct)
+        {
+            try
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "⏳ Генерирую график калорий...",
+                    cancellationToken: ct);
+
+                var (caloriesIn, caloriesOut) = await _chartDataService.GetCaloriesDataAsync(user.Id, days);
+
+                // Проверка на пустые данные
+                if (!caloriesIn.Any() && !caloriesOut.Any())
+                {
+                    await _botClient.SendMessage(
+                        chatId,
+                        "📊 Недостаточно данных для построения графика.\n" +
+                        "Добавьте записи о питании и активности.",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                var chartUrl = _chartService.GenerateCaloriesChartUrl(
+                    caloriesIn,
+                    caloriesOut,
+                    $"Калории за последние {days} дней");
+
+                Console.WriteLine($"Chart URL: {chartUrl}");
+
+                // Скачиваем изображение
+                using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
+
+                await _botClient.SendPhoto(
+                    chatId,
+                    InputFile.FromStream(imageStream, "chart.png"),
+                    caption: $"📊 График калорий за последние {days} дней\n\n" +
+                             $"🔴 Красная линия - потреблено\n" +
+                             $"🔵 Синяя линия - потрачено\n\n" +
+                             $"Средние значения:\n" +
+                             $"• Потребление: {caloriesIn.Values.Average():F0} ккал/день\n" +
+                             $"• Расход: {caloriesOut.Values.Average():F0} ккал/день",
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка генерации графика калорий: {ex}");
+                await _botClient.SendMessage(
+                    chatId,
+                    "❌ Ошибка при генерации графика. Попробуйте позже.",
+                    cancellationToken: ct);
+            }
+        }
+
+        // График шагов
+        private async Task ChartStepsCommand(long chatId, DomainUser user, CancellationToken ct)
+        {
+            await ChartStepsCommand(chatId, user, 7, ct);
+        }
+
+        private async Task ChartStepsCommand(long chatId, DomainUser user, int days, CancellationToken ct)
+        {
+            try
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "⏳ Генерирую график шагов...",
+                    cancellationToken: ct);
+
+                var stepsData = await _chartDataService.GetStepsDataAsync(user.Id, days);
+
+                if (!stepsData.Any() || stepsData.Values.All(v => v == 0))
+                {
+                    await _botClient.SendMessage(
+                        chatId,
+                        "👣 Недостаточно данных для построения графика шагов.\n" +
+                        "Добавьте записи об активности.",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                var chartUrl = _chartService.GenerateStepsChartUrl(
+                    stepsData,
+                    10000,
+                    $"Шаги за последние {days} дней");
+
+                Console.WriteLine($"Chart URL: {chartUrl}");
+
+                using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
+
+                await _botClient.SendPhoto(
+                    chatId,
+                    InputFile.FromStream(imageStream, "chart.png"),
+                    caption: $"👣 График шагов за последние {days} дней\n\n" +
+                             $"Среднее: {stepsData.Values.Average():F0} шагов/день\n" +
+                             $"Максимум: {stepsData.Values.Max()} шагов\n" +
+                             $"Всего: {stepsData.Values.Sum()} шагов",
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка генерации графика шагов: {ex}");
+                await _botClient.SendMessage(
+                    chatId,
+                    "❌ Ошибка при генерации графика. Попробуйте позже.",
+                    cancellationToken: ct);
+            }
+        }
+
+        // График БЖУ
+        private async Task ChartMacrosCommand(long chatId, DomainUser user, CancellationToken ct)
+        {
+            await ChartMacrosCommand(chatId, user, 7, ct);
+        }
+
+        private async Task ChartMacrosCommand(long chatId, DomainUser user, int days, CancellationToken ct)
+        {
+            try
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    "⏳ Генерирую график БЖУ...",
+                    cancellationToken: ct);
+
+                var macrosData = await _chartDataService.GetMacrosDataAsync(user.Id, days);
+
+                if (!macrosData.Any() || macrosData.Values.All(m => m.protein == 0 && m.fat == 0 && m.carbs == 0))
+                {
+                    await _botClient.SendMessage(
+                        chatId,
+                        "🍖 Недостаточно данных для построения графика БЖУ.\n" +
+                        "Добавьте записи о питании с указанием БЖУ.",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                var chartUrl = _chartService.GenerateMacrosChartUrl(
+                    macrosData,
+                    $"Баланс БЖУ за последние {days} дней");
+
+                Console.WriteLine($"Chart URL: {chartUrl}");
+
+                using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
+
+                var avgProtein = macrosData.Values.Average(m => m.protein);
+                var avgFat = macrosData.Values.Average(m => m.fat);
+                var avgCarbs = macrosData.Values.Average(m => m.carbs);
+
+                await _botClient.SendPhoto(
+                    chatId,
+                    InputFile.FromStream(imageStream, "chart.png"),
+                    caption: $"🍖 Баланс БЖУ за последние {days} дней\n\n" +
+                             $"Среднее в день:\n" +
+                             $"• Белки: {avgProtein:F0} г\n" +
+                             $"• Жиры: {avgFat:F0} г\n" +
+                             $"• Углеводы: {avgCarbs:F0} г",
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка генерации графика БЖУ: {ex}");
+                await _botClient.SendMessage(
+                    chatId,
+                    "❌ Ошибка при генерации графика. Попробуйте позже.",
+                    cancellationToken: ct);
+            }
+        }
+
+        private async Task ChartsMenuCommand(long chatId, CancellationToken ct)
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("📊 Калории (7 дней)", "chart_cal_7"),
+            InlineKeyboardButton.WithCallbackData("📊 Калории (14 дней)", "chart_cal_14")
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("👣 Шаги (7 дней)", "chart_steps_7"),
+            InlineKeyboardButton.WithCallbackData("👣 Шаги (14 дней)", "chart_steps_14")
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("🍖 БЖУ (7 дней)", "chart_macros_7"),
+            InlineKeyboardButton.WithCallbackData("🍖 БЖУ (14 дней)", "chart_macros_14")
+        }
+    });
+
+            await _botClient.SendMessage(
+                chatId,
+                "📈 Выберите тип графика:",
+                replyMarkup: keyboard,
+                cancellationToken: ct);
+        }
+
+
+
+
+
         // ---------------- Обработка сценариев ----------------
 
         private async Task ProcessScenario(ScenarioContext context, Message message, CancellationToken ct)

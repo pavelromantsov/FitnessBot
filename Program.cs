@@ -11,6 +11,7 @@ using FitnessBot.TelegramBot;
 using FitnessBot.BackgroundTasks;
 using FitnessBot.Infrastructure;
 
+
 namespace FitnessBot
 {
     public class Program
@@ -46,6 +47,9 @@ namespace FitnessBot
             var reportService = new ReportService(activityService, nutritionService);
             var adminStatsRepo = new PgAdminStatsRepository(dataContextFactory);
             var adminStatsService = new AdminStatsService(adminStatsRepo);
+            var chartService = new ChartService();
+            var chartDataService = new ChartDataService(nutritionRepo, activityRepo);
+            var chartImageService = new ChartImageService();
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
@@ -74,7 +78,10 @@ namespace FitnessBot
                 scenarios,
                 nutritionRepo,
                 activityRepo,
-                adminStatsService);
+                adminStatsService,
+                chartService,        
+                chartDataService,
+                chartImageService);
 
             var receiverOptions = new ReceiverOptions
             {
