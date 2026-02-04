@@ -72,26 +72,39 @@ namespace FitnessBot.Scenarios
                         return ScenarioResult.InProgress;
                     }
 
+                    context.Data["weight"] = weight.ToString("F1", CultureInfo.InvariantCulture);
+
+                    await bot.SendMessage(message.Chat.Id, "Укажи, пожалуйста, город (можно просто текстом):", cancellationToken: ct);
+                    context.CurrentStep = 4;
+                    return ScenarioResult.InProgress;
+
+                case 4:
+                    var city = string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
                     var ageStr = context.Data["age"]?.ToString() ?? "0";
                     var heightStr = context.Data["height"]?.ToString() ?? "0";
+                    var weightStr = context.Data["weight"]?.ToString() ?? "0";
 
                     var ageVal = int.Parse(ageStr, CultureInfo.InvariantCulture);
                     var heightVal = double.Parse(heightStr, CultureInfo.InvariantCulture);
-
+                    var weightVal = double.Parse(weightStr, CultureInfo.InvariantCulture);
 
                     var user = await _userService.GetByIdAsync(context.UserId);
                     if (user != null)
                     {
                         user.Age = ageVal;
                         user.HeightCm = heightVal;
-                        user.WeightKg = weight;
+                        user.WeightKg = weightVal;
+                        user.City = city;
                         await _userService.SaveAsync(user);
                     }
 
-                    // Можно сразу посчитать BMI
-                    await _bmiService.SaveMeasurementAsync(context.UserId, heightVal, weight);
+                    await _bmiService.SaveMeasurementAsync(context.UserId, heightVal, weightVal);
 
-                    await bot.SendMessage(message.Chat.Id, "Спасибо! Данные профиля сохранены. Теперь можешь пользоваться ботом.", cancellationToken: ct);
+                    await bot.SendMessage(message.Chat.Id,
+                        "Спасибо! Данные профиля сохранены. Теперь можешь пользоваться ботом.",
+                        cancellationToken: ct);
+
                     return ScenarioResult.Completed;
 
                 default:

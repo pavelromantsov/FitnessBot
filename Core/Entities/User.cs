@@ -29,5 +29,10 @@ namespace FitnessBot.Core.Entities
         public TimeSpan? DinnerTime { get; set; }
         public double? HeightCm { get; set; }
         public double? WeightKg { get; set; }
+        public bool ActivityRemindersEnabled { get; set; } = true;
+        public bool MorningReminderEnabled { get; set; } = true;
+        public bool LunchReminderEnabled { get; set; } = true;
+        public bool AfternoonReminderEnabled { get; set; } = true;
+        public bool EveningReminderEnabled { get; set; } = true;
     }
 }

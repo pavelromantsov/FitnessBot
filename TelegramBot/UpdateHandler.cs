@@ -98,32 +98,35 @@ namespace FitnessBot.TelegramBot
                 return scenario;
             }
 
-            // ---------------- Обработка сообщений ----------------
+        // ---------------- Обработка сообщений ----------------
 
-            private async Task OnMessage(Update update, Message message, CancellationToken ct)
+        private async Task OnMessage(Update update, Message message, CancellationToken ct)
+        {
+            if (message.Text is null)
+                return;
+
+            var chatId = message.Chat.Id;
+            var telegramId = message.From?.Id ?? 0;
+            var firstName = message.From?.FirstName ?? "Unknown";
+
+            if (telegramId == 0)
             {
-                if (message.Text is null)
-                    return;
+                await _botClient.SendMessage(chatId, "Не удалось определить твой TelegramId.", cancellationToken: ct);
+                return;
+            }
 
-                var chatId = message.Chat.Id;
-                var telegramId = message.From?.Id ?? 0;
-                var firstName = message.From?.FirstName ?? "Unknown";
-
-                if (telegramId == 0)
-                {
-                    await _botClient.SendMessage(
-                        chatId,
-                        "Ошибка: не удалось определить пользователя.",
-                        cancellationToken: ct);
-                    return;
-                }
-
-            // регистрация/обновление пользователя
+            // 1. Пытаемся найти пользователя
             var user = await _userService.GetByTelegramIdAsync(telegramId);
             if (user == null)
             {
-                user = await _userService.RegisterOrUpdateAsync(telegramId, firstName, null, message.Chat.Username);
+                // создаём пользователя БЕЗ города и возраста
+                user = await _userService.RegisterOrUpdateAsync(
+                    telegramId,
+                    firstName,
+                    null,            // age
+                    null);           // city
 
+                // запускаем сценарий регистрации
                 var regContext = new ScenarioContext
                 {
                     UserId = user.Id,
@@ -131,18 +134,19 @@ namespace FitnessBot.TelegramBot
                     CurrentStep = 0
                 };
 
-
                 await _contextRepository.SetContext(user.Id, regContext, ct);
 
-                var scenario = GetScenario(ScenarioType.Registration);
-                await scenario.HandleMessageAsync(_botClient, regContext, message, ct);
+                var regScenario = GetScenario(ScenarioType.Registration);
+                await regScenario.HandleMessageAsync(_botClient, regContext, message, ct);
                 return;
             }
-            else
-            {
-                // обновляем имя / lastActivity
-                user = await _userService.RegisterOrUpdateAsync(telegramId, firstName, null, message.Chat.Username);
-            }
+
+            // 2. Для существующего пользователя можно обновить только имя / lastActivity, без города
+            user = await _userService.RegisterOrUpdateAsync(
+                telegramId,
+                firstName,
+                user.Age,
+                user.City);
 
             // 1. проверяем активный сценарий
             var context = await _contextRepository.GetContext(user.Id, ct);
@@ -187,11 +191,19 @@ namespace FitnessBot.TelegramBot
                     break;
 
                 case "/today":
-                    await TodayCommand(chatId, user, ct); // user: DomainUser
+                    await TodayCommand(chatId, user, ct); 
+                    break;
+
+                case "/setgoal":
+                    await StartSetDailyGoalScenario(user, message, ct);
                     break;
 
                 case "/setmeals":
                     await StartMealTimeSetupAsync(chatId, user, ct);
+                    break;
+
+                case "/activity_reminders":
+                    await StartActivityReminderSettingsScenario(user, message, ct);
                     break;
 
                 case "/report":
@@ -200,6 +212,10 @@ namespace FitnessBot.TelegramBot
 
                 case "/help":
                     await HelpCommand(chatId, ct);
+                    break;
+
+                case "/edit_profile":
+                    await StartEditProfileScenario(user, message, ct);
                     break;
 
                 case "/admin_users":
@@ -331,7 +347,6 @@ namespace FitnessBot.TelegramBot
                 // 2. Кнопка «Другое количество»
                 if (data.StartsWith("meal_add_custom", StringComparison.OrdinalIgnoreCase))
                 {
-                    // data: meal_add_custom|<telegramId>
                     var parts = data.Split('|');
                     if (parts.Length < 2 || !long.TryParse(parts[1], out var telegramId))
                     {
@@ -373,12 +388,12 @@ namespace FitnessBot.TelegramBot
 
                     return;
                 }
-                //назначение админа
+
+                // 3. Назначение админа
                 if (data.StartsWith("make_admin", StringComparison.OrdinalIgnoreCase))
                 {
                     var dto = AdminUserCallbackDto.FromString(data);
 
-                    // текущий вызывающий
                     var caller = await _userService.GetByTelegramIdAsync(callbackQuery.From.Id);
                     if (caller == null || !IsAdmin(caller))
                     {
@@ -416,7 +431,166 @@ namespace FitnessBot.TelegramBot
                     return;
                 }
 
-                // 4. Дефолт для всех остальных callback'ов
+                // ========== ВОТ ЗДЕСЬ ДОБАВЬТЕ НОВЫЙ БЛОК ==========
+                // 4. Настройки напоминаний об активности
+                if (data.StartsWith("activity_reminders_", StringComparison.OrdinalIgnoreCase))
+                {
+                    var user = await _userService.GetByTelegramIdAsync(callbackQuery.From.Id);
+                    if (user == null)
+                    {
+                        await _botClient.AnswerCallbackQuery(
+                            callbackQuery.Id,
+                            "Пользователь не найден.",
+                            cancellationToken: ct);
+                        return;
+                    }
+
+                    // Обработка разных типов кнопок
+                    switch (data)
+                    {
+                        case "activity_reminders_all_on":
+                            user.ActivityRemindersEnabled = true;
+                            user.MorningReminderEnabled = true;
+                            user.LunchReminderEnabled = true;
+                            user.AfternoonReminderEnabled = true;
+                            user.EveningReminderEnabled = true;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                "✅ Все напоминания включены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await _botClient.EditMessageText(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    "✅ Настройки сохранены!\n\n" +
+                                    "Все напоминания об активности включены:\n" +
+                                    "☀️ Утренние (9:00) - включены\n" +
+                                    "🍽 Обеденные (13:00) - включены\n" +
+                                    "🧘‍♂️ Дневные (16:00) - включены\n" +
+                                    "🌆 Вечерние (19:00) - включены",
+                                    cancellationToken: ct);
+                            }
+                            break;
+
+                        case "activity_reminders_all_off":
+                            user.ActivityRemindersEnabled = false;
+                            user.MorningReminderEnabled = false;
+                            user.LunchReminderEnabled = false;
+                            user.AfternoonReminderEnabled = false;
+                            user.EveningReminderEnabled = false;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                "❌ Все напоминания отключены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await _botClient.EditMessageText(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    "❌ Настройки сохранены!\n\n" +
+                                    "Все напоминания об активности отключены.\n" +
+                                    "Вы можете включить их снова командой /activity_reminders",
+                                    cancellationToken: ct);
+                            }
+                            break;
+
+                        case "activity_reminders_morning":
+                            user.MorningReminderEnabled = !user.MorningReminderEnabled;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                user.MorningReminderEnabled
+                                    ? "✅ Утренние напоминания включены!"
+                                    : "❌ Утренние напоминания отключены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await UpdateActivityReminderMenu(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    user,
+                                    ct);
+                            }
+                            break;
+
+                        case "activity_reminders_lunch":
+                            user.LunchReminderEnabled = !user.LunchReminderEnabled;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                user.LunchReminderEnabled
+                                    ? "✅ Обеденные напоминания включены!"
+                                    : "❌ Обеденные напоминания отключены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await UpdateActivityReminderMenu(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    user,
+                                    ct);
+                            }
+                            break;
+
+                        case "activity_reminders_afternoon":
+                            user.AfternoonReminderEnabled = !user.AfternoonReminderEnabled;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                user.AfternoonReminderEnabled
+                                    ? "✅ Дневные напоминания включены!"
+                                    : "❌ Дневные напоминания отключены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await UpdateActivityReminderMenu(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    user,
+                                    ct);
+                            }
+                            break;
+
+                        case "activity_reminders_evening":
+                            user.EveningReminderEnabled = !user.EveningReminderEnabled;
+                            await _userService.SaveAsync(user);
+
+                            await _botClient.AnswerCallbackQuery(
+                                callbackQuery.Id,
+                                user.EveningReminderEnabled
+                                    ? "✅ Вечерние напоминания включены!"
+                                    : "❌ Вечерние напоминания отключены!",
+                                cancellationToken: ct);
+
+                            if (callbackQuery.Message != null)
+                            {
+                                await UpdateActivityReminderMenu(
+                                    callbackQuery.Message.Chat.Id,
+                                    callbackQuery.Message.MessageId,
+                                    user,
+                                    ct);
+                            }
+                            break;
+                    }
+
+                    return;
+                }
+                // ========== КОНЕЦ НОВОГО БЛОКА ==========
+
+                // 5. Дефолт для всех остальных callback'ов
                 await _botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
                     "Неизвестное действие.",
@@ -437,6 +611,7 @@ namespace FitnessBot.TelegramBot
         }
 
 
+
         // ---------------- Команды ----------------
 
         private async Task StartCommand(long chatId, DomainUser user, CancellationToken ct)
@@ -446,7 +621,13 @@ namespace FitnessBot.TelegramBot
         new KeyboardButton[] { "/bmi 80 180" },
         new KeyboardButton[] { "/bmi_scenario" },
         new KeyboardButton[] { "/today" },
+        new KeyboardButton[] { "/addcalories" },
+        new KeyboardButton[] { "/setgoal" },
+        new KeyboardButton[] { "/setmeals" },
+        new KeyboardButton[] { "/activity_reminders" },
+        new KeyboardButton[] { "/edit_profile" },
         new KeyboardButton[] { "/report" },
+        new KeyboardButton[] { "/whoami" },
         new KeyboardButton[] { "/help" }
     })
             {
@@ -470,11 +651,13 @@ namespace FitnessBot.TelegramBot
                     "/bmi_scenario — пошаговый расчёт ИМТ\n" +
                     "/today — калории и БЖУ за сегодня\n" +
                     "/setmeals - установить напоминания\n"+
+                    "/setgoal — установить ежедневную цель 🎯\n"+
+                    "/activity_reminders — настроить напоминания об активности 🏃\n" +
                     "/report — краткий отчёт за сегодня\n" +
                     "/cancel — прервать текущий сценарий",
                     cancellationToken: ct);
             }
-
+        // ---------------- Пользовательские команды ----------------
         // /bmi 80 180
         private async Task BmiInlineCommand(long chatId, DomainUser user, string text, CancellationToken ct)
         {
@@ -610,7 +793,100 @@ namespace FitnessBot.TelegramBot
                 "Введите время завтрака в формате HH:mm, например: 08:00",
                 cancellationToken: ct);
         }
+        private async Task StartEditProfileScenario(DomainUser user, Message message, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.EditProfile,
+                CurrentStep = 0
+            };
 
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            var scenario = GetScenario(ScenarioType.EditProfile);
+            await scenario.HandleMessageAsync(_botClient, context, message, ct);
+        }
+        private async Task StartSetDailyGoalScenario(DomainUser user, Message message, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.SetDailyGoal,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            var scenario = GetScenario(ScenarioType.SetDailyGoal);
+            await scenario.HandleMessageAsync(_botClient, context, message, ct);
+        }
+        private async Task StartActivityReminderSettingsScenario(DomainUser user, Message message, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.ActivityReminderSettings,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            var scenario = GetScenario(ScenarioType.ActivityReminderSettings);
+            await scenario.HandleMessageAsync(_botClient, context, message, ct);
+        }
+        private async Task UpdateActivityReminderMenu(
+    long chatId,
+    int messageId,
+    DomainUser user,
+    CancellationToken ct)
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("✅ Включить все", "activity_reminders_all_on"),
+            InlineKeyboardButton.WithCallbackData("❌ Отключить все", "activity_reminders_all_off")
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData(
+                user.MorningReminderEnabled ? "✅ Утренние (9:00)" : "☐ Утренние (9:00)",
+                "activity_reminders_morning"),
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData(
+                user.LunchReminderEnabled ? "✅ Обеденные (13:00)" : "☐ Обеденные (13:00)",
+                "activity_reminders_lunch"),
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData(
+                user.AfternoonReminderEnabled ? "✅ Дневные (16:00)" : "☐ Дневные (16:00)",
+                "activity_reminders_afternoon"),
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData(
+                user.EveningReminderEnabled ? "✅ Вечерние (19:00)" : "☐ Вечерние (19:00)",
+                "activity_reminders_evening"),
+        }
+    });
+
+            await _botClient.EditMessageText(
+                chatId,
+                messageId,
+                "⚙️ Настройка напоминаний об активности\n\n" +
+                "Выберите, какие напоминания вы хотите получать:\n\n" +
+                "☀️ Утренние (9:00) - мотивация на начало дня\n" +
+                "🍽 Обеденные (13:00) - напоминание пройтись\n" +
+                "🧘‍♂️ Дневные (16:00) - разминка и растяжка\n" +
+                "🌆 Вечерние (19:00) - проверка выполнения целей\n\n" +
+                $"Глобальный статус: {(user.ActivityRemindersEnabled ? "включены ✅" : "отключены ❌")}",
+                replyMarkup: keyboard,
+                cancellationToken: ct);
+        }
         // ---------------- Обработка сценариев ----------------
 
         private async Task ProcessScenario(ScenarioContext context, Message message, CancellationToken ct)

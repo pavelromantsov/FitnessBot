@@ -50,5 +50,20 @@ namespace FitnessBot.Core.DataAccess.Models
         [Column("weightkg"), NotNull]
         public double? WeightKg { get; set; }
 
+        [Column("activity_reminders_enabled"), NotNull]
+        public bool ActivityRemindersEnabled { get; set; } = true;
+
+        [Column("morning_reminder_enabled"), NotNull]
+        public bool MorningReminderEnabled { get; set; } = true;
+
+        [Column("lunch_reminder_enabled"), NotNull]
+        public bool LunchReminderEnabled { get; set; } = true;
+
+        [Column("afternoon_reminder_enabled"), NotNull]
+        public bool AfternoonReminderEnabled { get; set; } = true;
+
+        [Column("evening_reminder_enabled"), NotNull]
+        public bool EveningReminderEnabled { get; set; } = true;
+
     }
 }

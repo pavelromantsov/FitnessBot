@@ -55,14 +55,13 @@ namespace FitnessBot
                 new BmiScenario(bmiService),
                 new CustomCaloriesScenario(nutritionService, userService),
                 new MealTimeSetupScenario(userService),
-                new RegistrationScenario(userService, bmiService)
+                new RegistrationScenario(userService, bmiService),
+                new EditProfileScenario(userService, bmiService),
+                new SetDailyGoalScenario(notificationRepo),
+                new ActivityReminderSettingsScenario(userService)
             };
-
-            // 5. Background Tasks
-            var backgroundRunner = new BackgroundTaskRunner();
-            backgroundRunner.AddTask(new MealReminderBackgroundTask(userService, nutritionService, notificationService));
-
-            // 6. Telegram bot + UpdateHandler
+            
+            // 5. Telegram bot + UpdateHandler
             var botClient = new TelegramBotClient(botToken);
             var updateHandler = new UpdateHandler(
                 botClient,
@@ -83,6 +82,26 @@ namespace FitnessBot
             };
 
             var cts = new CancellationTokenSource();
+
+            // 6. Background Tasks
+            var backgroundRunner = new BackgroundTaskRunner();
+
+                backgroundRunner.AddTask(new MealReminderBackgroundTask(
+                    userService, 
+                    nutritionService, 
+                    notificationService));
+
+                backgroundRunner.AddTask(new DailyGoalCheckBackgroundTask(
+                    userService,
+                    activityRepo,
+                    nutritionRepo,
+                    notificationRepo,
+                    notificationService));
+
+                backgroundRunner.AddTask(new NotificationSenderBackgroundTask(
+                    botClient, 
+                    notificationService, 
+                    userService));
 
             // запускаем фоновые задачи
             backgroundRunner.StartTasks(cts.Token);

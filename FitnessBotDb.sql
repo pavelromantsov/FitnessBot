@@ -181,3 +181,14 @@ create index if not exists idx_notifications_user_scheduled
     alter table users
     add column if not exists heightcm double precision,
     add column if not exists weightkg double precision;
+
+
+-- =============================================
+-- Alter table: users (ADD REMINDER)
+-- =============================================
+    alter table users
+    add column if not exists activity_reminders_enabled boolean not null default true,
+    add column if not exists morning_reminder_enabled boolean not null default true,
+    add column if not exists lunch_reminder_enabled boolean not null default true,
+    add column if not exists afternoon_reminder_enabled boolean not null default true,
+    add column if not exists evening_reminder_enabled boolean not null default true;

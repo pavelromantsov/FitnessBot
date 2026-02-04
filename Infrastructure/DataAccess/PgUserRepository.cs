@@ -35,7 +35,12 @@ namespace FitnessBot.Infrastructure.DataAccess
             LunchTime = m.LunchTime,
             DinnerTime = m.DinnerTime,
             HeightCm = m.HeightCm,
-            WeightKg = m.WeightKg
+            WeightKg = m.WeightKg,
+            ActivityRemindersEnabled = m.ActivityRemindersEnabled,
+            MorningReminderEnabled = m.MorningReminderEnabled,
+            LunchReminderEnabled = m.LunchReminderEnabled,
+            AfternoonReminderEnabled = m.AfternoonReminderEnabled,
+            EveningReminderEnabled = m.EveningReminderEnabled
         };
 
         private static UserModel Map(User u) => new UserModel
@@ -52,7 +57,12 @@ namespace FitnessBot.Infrastructure.DataAccess
             LunchTime = u.LunchTime,
             DinnerTime = u.DinnerTime,
             HeightCm= u.HeightCm,
-            WeightKg= u.WeightKg
+            WeightKg= u.WeightKg,
+            ActivityRemindersEnabled = u.ActivityRemindersEnabled,
+            MorningReminderEnabled = u.MorningReminderEnabled,
+            LunchReminderEnabled = u.LunchReminderEnabled,
+            AfternoonReminderEnabled = u.AfternoonReminderEnabled,
+            EveningReminderEnabled = u.EveningReminderEnabled
         };
 
         public async Task<User?> GetByTelegramIdAsync(long telegramId)
