@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Globalization;
 using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
 using Telegram.Bot;
-using System.Globalization;
+using Telegram.Bot.Types;
 
 namespace FitnessBot.Scenarios
 {

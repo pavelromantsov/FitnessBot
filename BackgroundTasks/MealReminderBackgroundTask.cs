@@ -1,10 +1,5 @@
-﻿using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
+﻿using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using FitnessBot.Core.Abstractions;
 using FitnessBot.Infrastructure;
 
 namespace FitnessBot.BackgroundTasks

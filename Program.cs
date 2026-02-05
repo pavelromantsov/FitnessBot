@@ -1,15 +1,13 @@
-﻿using Microsoft.Extensions.Configuration;
-using Telegram.Bot;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types.Enums;
-
-using FitnessBot.Core.Entities;
+﻿using FitnessBot.BackgroundTasks;
 using FitnessBot.Core.Services;
+using FitnessBot.Infrastructure;
 using FitnessBot.Infrastructure.DataAccess;
 using FitnessBot.Scenarios;
 using FitnessBot.TelegramBot;
-using FitnessBot.BackgroundTasks;
-using FitnessBot.Infrastructure;
+using Microsoft.Extensions.Configuration;
+using Telegram.Bot;
+using Telegram.Bot.Polling;
+using Telegram.Bot.Types.Enums;
 
 
 namespace FitnessBot
@@ -62,7 +60,8 @@ namespace FitnessBot
                 new RegistrationScenario(userService, bmiService),
                 new EditProfileScenario(userService, bmiService),
                 new SetDailyGoalScenario(notificationRepo),
-                new ActivityReminderSettingsScenario(userService)
+                new ActivityReminderSettingsScenario(userService),
+                new AddMealScenario(nutritionService)
             };
             
             // 5. Telegram bot + UpdateHandler

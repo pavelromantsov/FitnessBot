@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LinqToDB.Mapping;
-using ColumnAttribute = LinqToDB.Mapping.ColumnAttribute;
-using NotNullAttribute = LinqToDB.Mapping.NotNullAttribute;
-using TableAttribute = System.ComponentModel.DataAnnotations.Schema.TableAttribute;
+﻿using TableAttribute = System.ComponentModel.DataAnnotations.Schema.TableAttribute;
 
 
 namespace FitnessBot.Core.Entities

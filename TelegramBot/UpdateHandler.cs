@@ -213,6 +213,10 @@ namespace FitnessBot.TelegramBot
                     await StartMealTimeSetupAsync(chatId, user, ct);
                     break;
 
+                case "/addmeal":
+                    await StartAddMealScenario(user, message, ct);
+                    break;
+
                 case "/activity_reminders":
                     await StartActivityReminderSettingsScenario(user, message, ct);
                     break;
@@ -374,23 +378,17 @@ namespace FitnessBot.TelegramBot
                 // 2. Кнопка «Другое количество»
                 if (data.StartsWith("meal_add_custom", StringComparison.OrdinalIgnoreCase))
                 {
-                    var parts = data.Split('|');
-                    if (parts.Length < 2 || !long.TryParse(parts[1], out var telegramId))
+                    var parts = data.Split(':');
+                    if (parts.Length != 2 || !long.TryParse(parts[1], out var telegramId))
                     {
-                        await _botClient.AnswerCallbackQuery(
-                            callbackQuery.Id,
-                            "Некорректные данные.",
-                            cancellationToken: ct);
+                        await _botClient.AnswerCallbackQuery(callbackQuery.Id, "Некорректные данные.", cancellationToken: ct);
                         return;
                     }
 
                     var user = await _userService.GetByTelegramIdAsync(telegramId);
                     if (user == null)
                     {
-                        await _botClient.AnswerCallbackQuery(
-                            callbackQuery.Id,
-                            "Пользователь не найден.",
-                            cancellationToken: ct);
+                        await _botClient.AnswerCallbackQuery(callbackQuery.Id, "Пользователь не найден.", cancellationToken: ct);
                         return;
                     }
 
@@ -398,7 +396,7 @@ namespace FitnessBot.TelegramBot
                     {
                         UserId = user.Id,
                         CurrentScenario = ScenarioType.CustomCalories,
-                        CurrentStep = 0
+                        CurrentStep = 0   // <‑‑ ВАЖНО: здесь должен быть 0
                     };
 
                     await _contextRepository.SetContext(user.Id, context, ct);
@@ -409,7 +407,7 @@ namespace FitnessBot.TelegramBot
                     {
                         await _botClient.SendMessage(
                             callbackQuery.Message.Chat.Id,
-                            "Введите количество калорий числом, например: 350",
+                            "Введите количество калорий.",
                             cancellationToken: ct);
                     }
 
@@ -694,6 +692,7 @@ namespace FitnessBot.TelegramBot
         new KeyboardButton[] { "/addcalories" },
         new KeyboardButton[] { "/setgoal" },
         new KeyboardButton[] { "/setmeals" },
+        new KeyboardButton[] {"/addmeal" },
         new KeyboardButton[] { "/activity_reminders" },
         new KeyboardButton[] { "/edit_profile" },
         new KeyboardButton[] { "/report" },
@@ -867,6 +866,20 @@ namespace FitnessBot.TelegramBot
                 chatId,
                 "Введите время завтрака в формате HH:mm, например: 08:00",
                 cancellationToken: ct);
+        }
+        private async Task StartAddMealScenario(DomainUser user, Message message, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.AddMeal,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            var scenario = GetScenario(ScenarioType.AddMeal);
+            await scenario.HandleMessageAsync(_botClient, context, message, ct);
         }
         private async Task StartEditProfileScenario(DomainUser user, Message message, CancellationToken ct)
         {

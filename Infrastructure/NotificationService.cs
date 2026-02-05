@@ -1,7 +1,6 @@
 ﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
 
 namespace FitnessBot.Infrastructure
 {

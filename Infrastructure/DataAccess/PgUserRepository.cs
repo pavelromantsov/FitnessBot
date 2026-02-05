@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
-using FitnessBot.Core.Entities;
-using LinqToDB.Async;
-using LinqToDB;
-using LinqToDB.Data;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
+using FitnessBot.Core.Entities;
+using LinqToDB;
+using LinqToDB.Async;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
