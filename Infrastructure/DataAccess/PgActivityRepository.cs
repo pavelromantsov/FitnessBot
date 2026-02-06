@@ -54,9 +54,30 @@ namespace FitnessBot.Infrastructure.DataAccess
                             a.Date >= from.Date &&
                             a.Date < to.Date)
                 .OrderBy(a => a.Date)
-                .ToListAsync(); // List<ActivityModel>
+                .ToListAsync();
 
-            return models.Select(Map).ToList(); // List<Activity> -> IReadOnlyList<Activity>
+            return models.Select(Map).ToList();
+        }
+
+        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId, DateTime dateUtc, string source, CancellationToken ct)
+        {
+            var day = dateUtc.Date;
+
+            await using var db = _connectionFactory();
+            var model = await db.Activities
+                .Where(a => a.UserId == userId
+                            && a.Date == day
+                            && a.Source == source)
+                .FirstOrDefaultAsync(ct);
+
+            return model is null ? null : Map(model);
+        }
+
+        public async Task UpdateAsync(Activity activity, CancellationToken ct)
+        {
+            await using var db = _connectionFactory();
+            var model = Map(activity);
+            await db.UpdateAsync(model, token: ct);
         }
     }
 }

@@ -104,7 +104,6 @@ namespace FitnessBot.BackgroundTasks
                 catch (Exception ex)
                 {
                     Console.Error.WriteLine($"GoogleFit refresh failed for user {user.Id}: {ex.Message}");
-                    // ВАЖНО: в случае ошибки рефреша просто выходим, но не трогаем старый токен
                     return;
                 }
             }
@@ -116,17 +115,31 @@ namespace FitnessBot.BackgroundTasks
 
             Console.WriteLine($"[GoogleFitSync] user={user.Id}, date={dayUtc:yyyy-MM-dd}, steps={steps}, calories={calories:F1}");
 
-            var activity = new Activity
-            {
-                UserId = user.Id,
-                Date = dayUtc,
-                Steps = steps,
-                ActiveMinutes = 0,
-                CaloriesBurned = calories,
-                Source = "googlefit"
-            };
+            var existing = await _activityRepository
+                .GetByUserDateAndSourceAsync(user.Id, dayUtc, "googlefit", ct);
 
-            await _activityRepository.AddAsync(activity);
+            if (existing != null)
+            {
+                existing.Steps = steps;
+                existing.ActiveMinutes = 0;
+                existing.CaloriesBurned = calories;
+
+                await _activityRepository.UpdateAsync(existing, ct);
+            }
+            else
+            {
+                var activity = new Activity
+                {
+                    UserId = user.Id,
+                    Date = dayUtc.Date,
+                    Steps = steps,
+                    ActiveMinutes = 0,
+                    CaloriesBurned = calories,
+                    Source = "googlefit"
+                };
+
+                await _activityRepository.AddAsync(activity);
+            }
         }
 
     }

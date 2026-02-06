@@ -201,3 +201,10 @@ create index if not exists idx_notifications_user_scheduled
     add column if not exists googlefitaccesstoken text,
     add column if not exists googlefitrefreshtoken text,
     add column if not exists googlefittokenexpiresat timestamptz;
+
+-- =============================================
+-- Indexes: activities (user, date, source)
+-- ============================================
+
+    CREATE UNIQUE INDEX ux_activities_user_date_source
+    ON activities ("user_id", "date", "source");
