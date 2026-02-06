@@ -48,6 +48,11 @@ namespace FitnessBot
             var chartService = new ChartService();
             var chartDataService = new ChartDataService(nutritionRepo, activityRepo);
             var chartImageService = new ChartImageService();
+            var httpClient = new HttpClient();
+            var googleClientId = configuration["GoogleFit:ClientId"];
+            var googleClientSecret = configuration["GoogleFit:ClientSecret"];
+            var googleFitClient = new GoogleFitClient(httpClient, googleClientId, googleClientSecret);
+
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
@@ -61,7 +66,8 @@ namespace FitnessBot
                 new EditProfileScenario(userService, bmiService),
                 new SetDailyGoalScenario(notificationRepo),
                 new ActivityReminderSettingsScenario(userService),
-                new AddMealScenario(nutritionService)
+                new AddMealScenario(nutritionService),
+                new ConnectGoogleFitScenario(userService)
             };
             
             // 5. Telegram bot + UpdateHandler
@@ -108,7 +114,12 @@ namespace FitnessBot
                     botClient, 
                     notificationService, 
                     userService));
-
+            
+                backgroundRunner.AddTask(new GoogleFitSyncBackgroundTask(
+                    userService, 
+                    activityRepo, 
+                    googleFitClient)); 
+                
             // запускаем фоновые задачи
             backgroundRunner.StartTasks(cts.Token);
 

@@ -241,6 +241,10 @@ namespace FitnessBot.TelegramBot
                     await ChartsMenuCommand(chatId, ct);
                     break;
 
+                case "/connectgooglefit":
+                    await StartConnectGoogleFitScenario(user, message, ct);
+                    break;
+
                 case "/help":
                     await HelpCommand(chatId, ct);
                     break;
@@ -692,14 +696,15 @@ namespace FitnessBot.TelegramBot
         new KeyboardButton[] { "/addcalories" },
         new KeyboardButton[] { "/setgoal" },
         new KeyboardButton[] { "/setmeals" },
-        new KeyboardButton[] {"/addmeal" },
+        new KeyboardButton[] { "/addmeal" },
         new KeyboardButton[] { "/activity_reminders" },
         new KeyboardButton[] { "/edit_profile" },
         new KeyboardButton[] { "/report" },
-        new KeyboardButton[] {"/chart_calories" },
+        new KeyboardButton[] { "/chart_calories" },
         new KeyboardButton[] { "/chart_steps" },
         new KeyboardButton[] { "/chart_macros" }, 
-        new KeyboardButton[] {"/charts" },
+        new KeyboardButton[] { "/charts" },
+        new KeyboardButton[] { "/connectgooglefit" },
         new KeyboardButton[] { "/whoami" },
         new KeyboardButton[] { "/help" }
     })
@@ -843,13 +848,8 @@ namespace FitnessBot.TelegramBot
         }
         private async Task ReportCommand(long chatId, DomainUser user, CancellationToken ct)
         {
-            var today = DateTime.UtcNow.Date;
-            var summary = await _reportService.BuildDailySummaryAsync(user.Id, today);
-
-            await _botClient.SendMessage(
-                chatId,
-                summary,
-                cancellationToken: ct);
+            var text = await _reportService.BuildDailySummaryAsync(user.Id, DateTime.UtcNow);
+            await _botClient.SendMessage(chatId, text, cancellationToken: ct);
         }
         private async Task StartMealTimeSetupAsync(long chatId, DomainUser user, CancellationToken ct)
         {
@@ -1178,6 +1178,20 @@ namespace FitnessBot.TelegramBot
                 cancellationToken: ct);
         }
 
+        private async Task StartConnectGoogleFitScenario(DomainUser user, Message message, CancellationToken ct)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = user.Id,
+                CurrentScenario = ScenarioType.ConnectGoogleFit,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(user.Id, context, ct);
+
+            var scenario = GetScenario(ScenarioType.ConnectGoogleFit);
+            await scenario.HandleMessageAsync(_botClient, context, message, ct);
+        }
 
 
 

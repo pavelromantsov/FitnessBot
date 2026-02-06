@@ -34,7 +34,10 @@ namespace FitnessBot.Infrastructure.DataAccess
             MorningReminderEnabled = m.MorningReminderEnabled,
             LunchReminderEnabled = m.LunchReminderEnabled,
             AfternoonReminderEnabled = m.AfternoonReminderEnabled,
-            EveningReminderEnabled = m.EveningReminderEnabled
+            EveningReminderEnabled = m.EveningReminderEnabled,
+            GoogleFitAccessToken = m.GoogleFitAccessToken,
+            GoogleFitRefreshToken = m.GoogleFitRefreshToken,
+            GoogleFitTokenExpiresAt = m.GoogleFitTokenExpiresAt
         };
 
         private static UserModel Map(User u) => new UserModel
@@ -56,7 +59,10 @@ namespace FitnessBot.Infrastructure.DataAccess
             MorningReminderEnabled = u.MorningReminderEnabled,
             LunchReminderEnabled = u.LunchReminderEnabled,
             AfternoonReminderEnabled = u.AfternoonReminderEnabled,
-            EveningReminderEnabled = u.EveningReminderEnabled
+            EveningReminderEnabled = u.EveningReminderEnabled,
+            GoogleFitAccessToken = u.GoogleFitAccessToken,
+            GoogleFitRefreshToken = u.GoogleFitRefreshToken,
+            GoogleFitTokenExpiresAt = u.GoogleFitTokenExpiresAt
         };
 
         public async Task<User?> GetByTelegramIdAsync(long telegramId)
@@ -88,6 +94,7 @@ namespace FitnessBot.Infrastructure.DataAccess
                 .FirstOrDefaultAsync(u => u.TelegramId == user.TelegramId);
 
             UserModel model;
+            
 
             if (existingModel == null)
             {
@@ -114,6 +121,9 @@ namespace FitnessBot.Infrastructure.DataAccess
                 model.DinnerTime = user.DinnerTime;
                 model.HeightCm = user.HeightCm;
                 model.WeightKg = user.WeightKg;
+                model.GoogleFitAccessToken = user.GoogleFitAccessToken;
+                model.GoogleFitRefreshToken = user.GoogleFitRefreshToken;
+                model.GoogleFitTokenExpiresAt = user.GoogleFitTokenExpiresAt;
                 await db.UpdateAsync(model);
             }
 

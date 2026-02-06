@@ -1,5 +1,7 @@
-﻿using FitnessBot.Infrastructure;
+﻿using FitnessBot.Core.Services;
+using FitnessBot.Infrastructure;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 
 namespace FitnessBot.BackgroundTasks
 {
@@ -54,21 +56,23 @@ namespace FitnessBot.BackgroundTasks
                 try
                 {
                     var user = await _userService.GetByIdAsync(notification.UserId);
-                    if (user != null)
-                    {
-                        await _botClient.SendMessage(
-                            user.TelegramId,
-                            notification.Text,
-                            cancellationToken: ct);
+                    if (user == null)
+                        continue;
 
-                        await _notificationService.MarkSentAsync(notification.Id, now);
+                    await _botClient.SendMessage(user.TelegramId, notification.Text, cancellationToken: ct);
+                    await _notificationService.MarkSentAsync(notification.Id, now);
 
-                        Console.WriteLine($"✅ Отправлено уведомление пользователю {user.TelegramId}: {notification.Type}");
-                    }
+                    Console.WriteLine($"📨 {user.TelegramId} {notification.Type}");
+                }
+                catch (ApiRequestException ex) when (ex.Message.Contains("chat not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Error.WriteLine($"[NotificationSender] chat not found for notification {notification.Id}, userId={notification.UserId}");
+                    // чтобы не мучать этот notification бесконечно:
+                    await _notificationService.MarkSentAsync(notification.Id, now);
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"❌ Ошибка отправки уведомления {notification.Id}: {ex.Message}");
+                    Console.Error.WriteLine($"[NotificationSender] {notification.Id} {ex.Message}");
                 }
             }
         }

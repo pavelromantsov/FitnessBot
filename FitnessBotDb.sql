@@ -192,3 +192,12 @@ create index if not exists idx_notifications_user_scheduled
     add column if not exists lunch_reminder_enabled boolean not null default true,
     add column if not exists afternoon_reminder_enabled boolean not null default true,
     add column if not exists evening_reminder_enabled boolean not null default true;
+
+-- =============================================
+-- Alter table: users (Add GoogleFit)
+-- ============================================
+        
+    alter table users
+    add column if not exists googlefitaccesstoken text,
+    add column if not exists googlefitrefreshtoken text,
+    add column if not exists googlefittokenexpiresat timestamptz;

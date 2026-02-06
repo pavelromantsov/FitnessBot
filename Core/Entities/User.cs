@@ -24,5 +24,8 @@ namespace FitnessBot.Core.Entities
         public bool LunchReminderEnabled { get; set; } = true;
         public bool AfternoonReminderEnabled { get; set; } = true;
         public bool EveningReminderEnabled { get; set; } = true;
+        public string? GoogleFitAccessToken { get; set; }
+        public string? GoogleFitRefreshToken { get; set; }
+        public DateTime? GoogleFitTokenExpiresAt { get; set; }
     }
 }

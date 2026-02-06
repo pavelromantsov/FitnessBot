@@ -1,4 +1,5 @@
 ﻿using FitnessBot.Core.Abstractions;
+using FitnessBot.Infrastructure.DataAccess;
 
 namespace FitnessBot.Core.Services
 {
@@ -61,11 +62,15 @@ namespace FitnessBot.Core.Services
             var from = today.AddDays(-days);
             var to = today.AddDays(1);
 
-            var activities = await _activityRepository.GetByUserAndPeriodAsync(userId, from, to);
+            var activitiesList = await _activityRepository.GetByUserAndPeriodAsync(userId, from, to);
+            // заменить на:
+            // var activitiesList = await activityService.GetMergedForPeriodAsync(userId, from, to);
 
-            var stepsByDate = activities
+            var stepsByDate = activitiesList
                 .GroupBy(a => a.Date.Date)
-                .ToDictionary(g => g.Key, g => g.Sum(a => a.Steps));
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Sum(a => a.Steps));
 
             var result = new Dictionary<DateTime, int>();
             for (int i = 0; i < days; i++)

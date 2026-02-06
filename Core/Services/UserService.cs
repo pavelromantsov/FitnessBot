@@ -1,5 +1,7 @@
 ﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
+using Telegram.Bot.Types;
+using User = FitnessBot.Core.Entities.User;
 
 namespace FitnessBot.Core.Services
 {
@@ -36,6 +38,8 @@ namespace FitnessBot.Core.Services
         }
 
         public Task<IReadOnlyList<User>> GetAllAsync() => _users.GetAllAsync();
+        
+        
 
         public Task<User> SaveAsync(User user) => _users.SaveAsync(user);
 
@@ -65,5 +69,21 @@ namespace FitnessBot.Core.Services
                 _users.FindByNameAsync(namePart);
 
         public Task<User?> GetByIdAsync(long id) => _users.GetByIdAsync(id);
+
+        public async Task SaveGoogleFitTokensAsync(
+        long userId,
+        string accessToken,
+        string refreshToken,
+        DateTime expiresAtUtc)
+        {
+            var user = await _users.GetByIdAsync(userId);
+            if (user == null) return;
+
+            user.GoogleFitAccessToken = accessToken;
+            user.GoogleFitRefreshToken = refreshToken;
+            user.GoogleFitTokenExpiresAt = expiresAtUtc;
+
+            await _users.SaveAsync(user);
+        }
     }
 }

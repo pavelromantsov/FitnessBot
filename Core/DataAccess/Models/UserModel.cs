@@ -58,6 +58,15 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("evening_reminder_enabled"), NotNull]
         public bool EveningReminderEnabled { get; set; } = true;
+        
+        [Column("googlefitaccesstoken", CanBeNull = true)]
+        public string? GoogleFitAccessToken { get; set; }
+
+        [Column("googlefitrefreshtoken", CanBeNull = true)]
+        public string? GoogleFitRefreshToken { get; set; }
+
+        [Column("googlefittokenexpiresat", CanBeNull = true)]
+        public DateTime? GoogleFitTokenExpiresAt { get; set; }
 
     }
 }
