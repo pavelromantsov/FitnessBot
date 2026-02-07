@@ -1,4 +1,5 @@
 ﻿using FitnessBot.BackgroundTasks;
+using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Services;
 using FitnessBot.Infrastructure;
 using FitnessBot.Infrastructure.DataAccess;
@@ -52,7 +53,6 @@ namespace FitnessBot
             var googleClientId = configuration["GoogleFit:ClientId"];
             var googleClientSecret = configuration["GoogleFit:ClientSecret"];
             var googleFitClient = new GoogleFitClient(httpClient, googleClientId, googleClientSecret);
-
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
@@ -117,9 +117,15 @@ namespace FitnessBot
             
                 backgroundRunner.AddTask(new GoogleFitSyncBackgroundTask(
                     userService, 
-                    activityRepo, 
-                    googleFitClient)); 
-                
+                    activityRepo,
+                    googleFitClient));
+
+                backgroundRunner.AddTask(new ActivityReminderBackgroundTask(
+                    userService,
+                    activityRepo,
+                    notificationRepo,
+                    notificationService));
+
             // запускаем фоновые задачи
             backgroundRunner.StartTasks(cts.Token);
 

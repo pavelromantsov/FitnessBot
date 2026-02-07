@@ -688,36 +688,43 @@ namespace FitnessBot.TelegramBot
 
         private async Task StartCommand(long chatId, DomainUser user, CancellationToken ct)
         {
-            var keyboard = new ReplyKeyboardMarkup(new[]
+            var rows = new List<List<KeyboardButton>>
+    {
+        new() { new KeyboardButton("bmi 80 180"), new KeyboardButton("bmi_scenario") },
+        new() { new KeyboardButton("today"), new KeyboardButton("addcalories") },
+        new() { new KeyboardButton("setgoal"), new KeyboardButton("setmeals") },
+        new() { new KeyboardButton("addmeal"), new KeyboardButton("activity_reminders") },
+        new() { new KeyboardButton("edit_profile"), new KeyboardButton("report") },
+        new() { new KeyboardButton("chart_calories"), new KeyboardButton("chart_steps") },
+        new() { new KeyboardButton("chart_macros"), new KeyboardButton("charts") },
+        new() { new KeyboardButton("connectgooglefit"), new KeyboardButton("whoami") },
+        new() { new KeyboardButton("help") }
+    };
+
+            if (user.Role == UserRole.Admin)
             {
-        new KeyboardButton[] { "/bmi 80 180" },
-        new KeyboardButton[] { "/bmi_scenario" },
-        new KeyboardButton[] { "/today" },
-        new KeyboardButton[] { "/addcalories" },
-        new KeyboardButton[] { "/setgoal" },
-        new KeyboardButton[] { "/setmeals" },
-        new KeyboardButton[] { "/addmeal" },
-        new KeyboardButton[] { "/activity_reminders" },
-        new KeyboardButton[] { "/edit_profile" },
-        new KeyboardButton[] { "/report" },
-        new KeyboardButton[] { "/chart_calories" },
-        new KeyboardButton[] { "/chart_steps" },
-        new KeyboardButton[] { "/chart_macros" }, 
-        new KeyboardButton[] { "/charts" },
-        new KeyboardButton[] { "/connectgooglefit" },
-        new KeyboardButton[] { "/whoami" },
-        new KeyboardButton[] { "/help" }
-    })
+                rows.Add(new List<KeyboardButton>
+        {
+            new KeyboardButton("admin_users"),
+            new KeyboardButton("admin_stats"),
+            new KeyboardButton("admin_activity"),
+            new KeyboardButton("admin_find")
+            // при желании сюда же adminactivity, adminfind и т.п.
+        });
+            }
+
+            var keyboard = new ReplyKeyboardMarkup(rows)
             {
                 ResizeKeyboard = true
             };
 
             await _botClient.SendMessage(
                 chatId,
-                $"Привет, {user.Name}! Я фитнес‑бот «Вес‑контроль».",
+                $"Привет, {user.Name}! Выберите команду:",
                 replyMarkup: keyboard,
                 cancellationToken: ct);
         }
+
 
         private async Task HelpCommand(long chatId, CancellationToken ct)
             {

@@ -1,4 +1,4 @@
-﻿using FitnessBot.Infrastructure.DataAccess;
+﻿using FitnessBot.Core.Abstractions;
 
 namespace FitnessBot.Core.Services
 {

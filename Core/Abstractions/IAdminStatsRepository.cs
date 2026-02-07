@@ -1,4 +1,4 @@
-﻿namespace FitnessBot.Infrastructure.DataAccess
+﻿namespace FitnessBot.Core.Abstractions
 {
     public interface IAdminStatsRepository
     {

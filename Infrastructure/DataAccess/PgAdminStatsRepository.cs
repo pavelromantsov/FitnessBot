@@ -1,4 +1,5 @@
-﻿using LinqToDB.Async;
+﻿using FitnessBot.Core.Abstractions;
+using LinqToDB.Async;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
