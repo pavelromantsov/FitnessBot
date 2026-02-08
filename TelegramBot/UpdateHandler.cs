@@ -8,6 +8,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 using DomainUser = FitnessBot.Core.Entities.User;
 
 
@@ -182,75 +183,128 @@ namespace FitnessBot.TelegramBot
             var command = message.Text
                          .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                          .FirstOrDefault() ?? string.Empty;
+            
+            var text = message.Text;
+            var lowered = text.ToLowerInvariant();
 
-            switch (command.ToLowerInvariant())
+            switch (lowered)
             {
                 case "/start":
                     await StartCommand(chatId, user, ct);
                     break;
 
-                case "/bmi":
-                    await BmiInlineCommand(chatId, user, message.Text, ct);
-                    break;
-
                 case "/bmi_scenario":
+                case "bmi_scenario":
+                case "индекс массы тела":
+                case "📐 индекс массы тела":
                     await StartBmiScenario(user, message, ct);
                     break;
 
+                case "/today":
+                case "today":
+                case "сегодня":
+                case "📅 сегодня":
+                    await TodayCommand(chatId, user, ct);
+                    break;
+
                 case "/addcalories":
+                case "addcalories":
+                case "добавить калории":
+                case "➕ добавить калории":
                     await ShowAddCaloriesMenuAsync(chatId, message.From.Id, ct);
                     break;
 
-                case "/today":
-                    await TodayCommand(chatId, user, ct); 
-                    break;
-
                 case "/setgoal":
+                case "setgoal":
+                case "цель":
+                case "🎯 цель":
                     await StartSetDailyGoalScenario(user, message, ct);
                     break;
 
                 case "/setmeals":
+                case "setmeals":
+                case "время приёмов пищи":
+                case "🍽 время приёмов пищи":
                     await StartMealTimeSetupAsync(chatId, user, ct);
                     break;
 
                 case "/addmeal":
+                case "addmeal":
+                case "добавить приём пищи":
+                case "🍕 добавить приём пищи":
                     await StartAddMealScenario(user, message, ct);
                     break;
 
                 case "/activity_reminders":
+                case "activityreminders":
+                case "activity_reminders":
+                case "напоминания":
+                case "⏰ напоминания":
                     await StartActivityReminderSettingsScenario(user, message, ct);
                     break;
 
+                case "/edit_profile":
+                case "editprofile":
+                case "edit_profile":
+                case "профиль":
+                case "👤 профиль":
+                    await StartEditProfileScenario(user, message, ct);
+                    break;
+
                 case "/report":
-                    await ReportCommand(chatId, user, ct);
+                case "📊 отчёт":
+                    await StartReportCalendarAsync(chatId, user, ct);
                     break;
 
                 case "/chart_calories":
+                case "chartcalories":
+                case "chart_calories":
+                case "график калорий":
+                case "🔥 график калорий":
                     await ChartCaloriesCommand(chatId, user, ct);
                     break;
 
                 case "/chart_steps":
+                case "chartsteps":
+                case "chart_steps":
+                case "график шагов":
                     await ChartStepsCommand(chatId, user, ct);
                     break;
 
                 case "/chart_macros":
+                case "chartmacros":
+                case "chart_macros":
+                case "график бжу":
+                case "🥦 график бжу":
                     await ChartMacrosCommand(chatId, user, ct);
                     break;
 
                 case "/charts":
+                case "charts":
+                case "все графики":
+                case "📈 все графики":
                     await ChartsMenuCommand(chatId, ct);
                     break;
 
                 case "/connectgooglefit":
+                case "connectgooglefit":
+                case "подключить google fit":
+                case "🔗 подключить google fit":
                     await StartConnectGoogleFitScenario(user, message, ct);
                     break;
 
-                case "/help":
-                    await HelpCommand(chatId, ct);
+                case "/whoami":
+                case "whoami":
+                case "кто я":
+                case "🙋 кто я":
+                    await WhoAmICommand(chatId, user, ct);
                     break;
 
-                case "/edit_profile":
-                    await StartEditProfileScenario(user, message, ct);
+                case "/help":
+                case "help":
+                case "помощь":
+                case "❓ помощь":
+                    await HelpCommand(chatId, ct);
                     break;
 
                 case "/admin_users":
@@ -297,10 +351,6 @@ namespace FitnessBot.TelegramBot
 
                 case "/admin_stats":
                     await AdminStatsCommand(chatId, user, ct);
-                    break;
-
-                case "/whoami":
-                    await WhoAmICommand(chatId, user, ct);
                     break;
 
                 default:
@@ -660,9 +710,14 @@ namespace FitnessBot.TelegramBot
 
                     return;
                 }
+                // 6. Календарь
+                if (data.StartsWith("reportcal_", StringComparison.OrdinalIgnoreCase))
+                {
+                    await HandleReportCalendarCallback(callbackQuery, ct);
+                    return;
+                }
 
-
-                // 6. Дефолт для всех остальных callback'ов
+                // 7. Дефолт для всех остальных callback'ов
                 await _botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
                     "Неизвестное действие.",
@@ -689,28 +744,26 @@ namespace FitnessBot.TelegramBot
         private async Task StartCommand(long chatId, DomainUser user, CancellationToken ct)
         {
             var rows = new List<List<KeyboardButton>>
-    {
-        new() { new KeyboardButton("bmi 80 180"), new KeyboardButton("bmi_scenario") },
-        new() { new KeyboardButton("today"), new KeyboardButton("addcalories") },
-        new() { new KeyboardButton("setgoal"), new KeyboardButton("setmeals") },
-        new() { new KeyboardButton("addmeal"), new KeyboardButton("activity_reminders") },
-        new() { new KeyboardButton("edit_profile"), new KeyboardButton("report") },
-        new() { new KeyboardButton("chart_calories"), new KeyboardButton("chart_steps") },
-        new() { new KeyboardButton("chart_macros"), new KeyboardButton("charts") },
-        new() { new KeyboardButton("connectgooglefit"), new KeyboardButton("whoami") },
-        new() { new KeyboardButton("help") }
-    };
+                {
+                    new() { new KeyboardButton("📐 Индекс массы тела"), new KeyboardButton("📅 Сегодня") },
+                    new() { new KeyboardButton("➕ Добавить калории"), new KeyboardButton("🍕 Добавить приём пищи") },
+                    new() { new KeyboardButton("🎯 Цель"), new KeyboardButton("🍽 Время приёмов пищи") },
+                    new() { new KeyboardButton("⏰ Напоминания"), new KeyboardButton("👤 Профиль") },
+                    new() { new KeyboardButton("📊 Отчёт"), new KeyboardButton("📈 Все графики") },
+                    new() { new KeyboardButton("🔥 График калорий"), new KeyboardButton("👣 График шагов") },
+                    new() { new KeyboardButton("🥦 График БЖУ"), new KeyboardButton("🔗 Подключить Google Fit") },
+                    new() { new KeyboardButton("🙋 Кто я"), new KeyboardButton("❓ Помощь") }
+                };
 
             if (user.Role == UserRole.Admin)
             {
                 rows.Add(new List<KeyboardButton>
-        {
-            new KeyboardButton("admin_users"),
-            new KeyboardButton("admin_stats"),
-            new KeyboardButton("admin_activity"),
-            new KeyboardButton("admin_find")
-            // при желании сюда же adminactivity, adminfind и т.п.
-        });
+                    {
+                        new KeyboardButton("/admin_users"),
+                        new KeyboardButton("/admin_stats"),
+                        new KeyboardButton("/admin_activity"),
+                        new KeyboardButton("/admin_find")
+                    });
             }
 
             var keyboard = new ReplyKeyboardMarkup(rows)
@@ -732,7 +785,6 @@ namespace FitnessBot.TelegramBot
                     chatId,
                     "Доступные команды:\n" +
                     "/start — приветствие и меню\n" +
-                    "/bmi вес рост — быстрый расчёт ИМТ (кг, см)\n" +
                     "/bmi_scenario — пошаговый расчёт ИМТ\n" +
                     "/today — калории и БЖУ за сегодня\n" +
                     "/setmeals - установить напоминания\n"+
@@ -744,29 +796,6 @@ namespace FitnessBot.TelegramBot
                     cancellationToken: ct);
             }
         // ---------------- Пользовательские команды ----------------
-        // /bmi 80 180
-        private async Task BmiInlineCommand(long chatId, DomainUser user, string text, CancellationToken ct)
-        {
-            var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 3 ||
-                !double.TryParse(parts[1], out var weight) ||
-                !double.TryParse(parts[2], out var height))
-            {
-                await _botClient.SendMessage(
-                    chatId,
-                    "Формат команды: /bmi <вес_кг> <рост_см>\nНапример: /bmi 80 180",
-                    cancellationToken: ct);
-                return;
-            }
-
-            var record = await _bmiService.SaveMeasurementAsync(user.Id, height, weight);
-
-            await _botClient.SendMessage(
-                chatId,
-                $"Ваш ИМТ: {record.Bmi:F1}, категория: {record.Category}.\n{record.Recommendation}",
-                cancellationToken: ct);
-        }
-
         // сценарий ИМТ (пошаговый)
         private async Task StartBmiScenario(DomainUser user, Message message, CancellationToken ct)
         {
@@ -853,11 +882,79 @@ namespace FitnessBot.TelegramBot
                 text,
                 cancellationToken: ct);
         }
-        private async Task ReportCommand(long chatId, DomainUser user, CancellationToken ct)
+        private async Task StartReportCalendarAsync(long chatId, DomainUser user, CancellationToken ct)
         {
-            var text = await _reportService.BuildDailySummaryAsync(user.Id, DateTime.UtcNow);
-            await _botClient.SendMessage(chatId, text, cancellationToken: ct);
+            var today = DateTime.UtcNow.Date;
+            var keyboard = BuildCalendarKeyboard(today.Year, today.Month, user.Id);
+
+            await _botClient.SendMessage(
+                chatId,
+                "Выберите дату для отчёта:",
+                replyMarkup: keyboard,
+                cancellationToken: ct);
         }
+
+        private InlineKeyboardMarkup BuildCalendarKeyboard(int year, int month, long userId)
+        {
+            var firstDay = new DateTime(year, month, 1);
+            var daysInMonth = DateTime.DaysInMonth(year, month);
+
+            var rows = new List<List<InlineKeyboardButton>>();
+
+            // строка с месяцем и стрелками
+            rows.Add(new List<InlineKeyboardButton>
+                {
+                    InlineKeyboardButton.WithCallbackData("◀", $"reportcal_prev_{year}_{month}_{userId}"),
+                    InlineKeyboardButton.WithCallbackData($"{firstDay:MMMM yyyy}", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("▶", $"reportcal_next_{year}_{month}_{userId}")
+                });
+
+                        // заголовки дней
+                        rows.Add(new List<InlineKeyboardButton>
+                {
+                    InlineKeyboardButton.WithCallbackData("Пн", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Вт", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Ср", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Чт", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Пт", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Сб", "reportcal_ignore"),
+                    InlineKeyboardButton.WithCallbackData("Вс", "reportcal_ignore")
+                });
+
+            var current = firstDay;
+            var week = new List<InlineKeyboardButton>();
+
+            // отступ до первого дня (понедельник = 1)
+            int offset = ((int)firstDay.DayOfWeek + 6) % 7; // превращаем Sunday(0) в 6
+
+            for (int i = 0; i < offset; i++)
+                week.Add(InlineKeyboardButton.WithCallbackData(" ", "reportcal_ignore"));
+
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(year, month, day);
+                week.Add(InlineKeyboardButton.WithCallbackData(
+                    day.ToString(),
+                    $"reportcal_day_{date:yyyy_MM_dd}_{userId}"));
+
+                if (week.Count == 7)
+                {
+                    rows.Add(week);
+                    week = new List<InlineKeyboardButton>();
+                }
+            }
+
+            if (week.Count > 0)
+            {
+                while (week.Count < 7)
+                    week.Add(InlineKeyboardButton.WithCallbackData(" ", "reportcal_ignore"));
+                rows.Add(week);
+            }
+
+            return new InlineKeyboardMarkup(rows);
+        }
+
+
         private async Task StartMealTimeSetupAsync(long chatId, DomainUser user, CancellationToken ct)
         {
             var context = new ScenarioContext
@@ -1537,6 +1634,76 @@ namespace FitnessBot.TelegramBot
                 cancellationToken: ct);
         }
 
+        private async Task HandleReportCalendarCallback(CallbackQuery callbackQuery, CancellationToken ct)
+        {
+            var data = callbackQuery.Data ?? "";
+            var chatId = callbackQuery.Message!.Chat.Id;
+
+            if (data.StartsWith("reportcal_ignore"))
+            {
+                await _botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
+                return;
+            }
+
+            if (data.StartsWith("reportcal_prev_") || data.StartsWith("reportcal_next_"))
+            {
+                var parts = data.Split('_'); // reportcal_prev_year_month_userId
+                var year = int.Parse(parts[2]);
+                var month = int.Parse(parts[3]);
+                var userId = long.Parse(parts[4]);
+
+                if (data.StartsWith("reportcal_prev_"))
+                {
+                    var prev = new DateTime(year, month, 1).AddMonths(-1);
+                    year = prev.Year;
+                    month = prev.Month;
+                }
+                else
+                {
+                    var next = new DateTime(year, month, 1).AddMonths(1);
+                    year = next.Year;
+                    month = next.Month;
+                }
+
+                var keyboard = BuildCalendarKeyboard(year, month, userId);
+
+                await _botClient.EditMessageReplyMarkup(
+                    chatId,
+                    callbackQuery.Message!.MessageId,
+                    keyboard,
+                    cancellationToken: ct);
+
+                await _botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
+                return;
+            }
+
+            if (data.StartsWith("reportcal_day_"))
+            {
+                // reportcal_day_yyyy_MM_dd_userId
+                var parts = data.Split('_');
+                var dateStr = $"{parts[2]}-{parts[3]}-{parts[4]}"; // yyyy-MM-dd
+                var userId = long.Parse(parts[5]);
+
+                var date = DateTime.Parse(dateStr).Date;
+
+                var user = await _userService.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    await _botClient.AnswerCallbackQuery(callbackQuery.Id, "Пользователь не найден", cancellationToken: ct);
+                    return;
+                }
+
+                var text = await _reportService.BuildDailySummaryAsync(user.Id, date);
+
+                await _botClient.EditMessageText(
+                    chatId,
+                    callbackQuery.Message!.MessageId,
+                    $"Отчёт за {date:dd.MM.yyyy}:\n{text}",
+                    cancellationToken: ct);
+
+                await _botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
+            }
+        }
 
 
         // ---------------- Обработчик ошибок ----------------
