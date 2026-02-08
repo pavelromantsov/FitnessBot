@@ -107,25 +107,26 @@ namespace FitnessBot.TelegramBot.Handlers
         {
             var rows = new List<List<KeyboardButton>>
             {
-                new() { new KeyboardButton("bmi 80 180"), new KeyboardButton("bmi_scenario") },
-                new() { new KeyboardButton("today"), new KeyboardButton("addcalories") },
-                new() { new KeyboardButton("setgoal"), new KeyboardButton("setmeals") },
-                new() { new KeyboardButton("addmeal"), new KeyboardButton("activity_reminders") },
-                new() { new KeyboardButton("edit_profile"), new KeyboardButton("report") },
-                new() { new KeyboardButton("chart_calories"), new KeyboardButton("chart_steps") },
-                new() { new KeyboardButton("chart_macros"), new KeyboardButton("charts") },
-                new() { new KeyboardButton("connectgooglefit"), new KeyboardButton("whoami") },
-                new() { new KeyboardButton("help") }
+                // Основные команды
+                new() { new KeyboardButton("/today"), new KeyboardButton("/report") },
+                new() { new KeyboardButton("/bmi 80 180"), new KeyboardButton("/addcalories") },
+                new() { new KeyboardButton("/addmeal"), new KeyboardButton("/setgoal") },
+                
+                // Настройки
+                new() { new KeyboardButton("/setmeals"), new KeyboardButton("/activity_reminders") },
+                new() { new KeyboardButton("/edit_profile"), new KeyboardButton("/whoami") },
+                
+                // Графики и интеграции
+                new() { new KeyboardButton("/charts"), new KeyboardButton("/connectgooglefit") },
+                new() { new KeyboardButton("/help") }
             };
 
             if (ctx.User.Role == UserRole.Admin)
             {
                 rows.Add(new List<KeyboardButton>
                 {
-                    new KeyboardButton("admin_users"),
-                    new KeyboardButton("admin_stats"),
-                    new KeyboardButton("admin_activity"),
-                    new KeyboardButton("admin_find")
+                    new KeyboardButton("/admin_users"),
+                    new KeyboardButton("/admin_stats")
                 });
             }
 
@@ -136,26 +137,71 @@ namespace FitnessBot.TelegramBot.Handlers
 
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                $"Привет, {ctx.User.Name}! Выберите команду:",
+                $"👋 Привет, {ctx.User.Name}!\n\n" +
+                "🏃 Основные команды:\n" +
+                "• /today — статистика за сегодня\n" +
+                "• /addcalories — быстрое добавление калорий\n" +
+                "• /addmeal — подробное добавление приёма пищи\n\n" +
+                "📊 Графики:\n" +
+                "• /charts — выбор графиков\n\n" +
+                "⚙️ Настройки:\n" +
+                "• /setgoal — установить цель на день\n" +
+                "• /activity_reminders — напоминания об активности\n\n" +
+                "ℹ️ /help — справка по командам",
                 replyMarkup: keyboard,
                 cancellationToken: default);
         }
 
         private async Task HelpCommand(UpdateContext ctx)
         {
+            var helpText =
+                "📋 **Справка по командам FitnessBot**\n\n" +
+
+                "🏃 **Основные команды:**\n" +
+                "/start — главное меню\n" +
+                "/today — статистика за сегодня\n" +
+                "/report — краткий отчёт\n" +
+                "/addcalories — быстро добавить калории\n" +
+                "/addmeal — добавить приём пищи с БЖУ\n\n" +
+
+                "📊 **Расчёты и ИМТ:**\n" +
+                "/bmi <вес> <рост> — расчёт ИМТ (пример: /bmi 80 180)\n" +
+                "/bmi_scenario — пошаговый расчёт ИМТ\n\n" +
+
+                "🎯 **Цели и напоминания:**\n" +
+                "/setgoal — установить цель на день\n" +
+                "/setmeals — настроить время приёмов пищи\n" +
+                "/activity_reminders — напоминания об активности\n\n" +
+
+                "📈 **Графики и статистика:**\n" +
+                "/charts — меню графиков\n" +
+                "/chart_calories — график калорий\n" +
+                "/chart_steps — график шагов\n" +
+                "/chart_macros — график БЖУ\n\n" +
+
+                "⚙️ **Настройки:**\n" +
+                "/edit_profile — редактировать профиль\n" +
+                "/whoami — информация о вашем аккаунте\n" +
+                "/connectgooglefit — подключить Google Fit\n\n" +
+
+                "❌ **Управление:**\n" +
+                "/cancel — отменить текущий сценарий\n" +
+                "/help — эта справка";
+
+            if (ctx.User.Role == UserRole.Admin)
+            {
+                helpText += "\n\n👨‍💼 **Команды администратора:**\n" +
+                           "/admin_users — список пользователей\n" +
+                           "/admin_stats — статистика системы\n" +
+                           "/admin_activity — активность пользователей\n" +
+                           "/admin_find <имя> — поиск пользователя\n" +
+                           "/make_admin <telegram_id> — назначить админа\n" +
+                           "/make_user <telegram_id> — снять права админа";
+            }
+
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                "Доступные команды:\n" +
-                "/start — приветствие и меню\n" +
-                "/bmi вес рост — быстрый расчёт ИМТ (кг, см)\n" +
-                "/bmi_scenario — пошаговый расчёт ИМТ\n" +
-                "/today — калории и БЖУ за сегодня\n" +
-                "/setmeals - установить напоминания\n" +
-                "/setgoal — установить ежедневную цель 🎯\n" +
-                "/activity_reminders — настроить напоминания об активности 🏃\n" +
-                "/report — краткий отчёт за сегодня\n" +
-                "/charts — графики и статистика 📊\n" +
-                "/cancel — прервать текущий сценарий",
+                helpText,
                 cancellationToken: default);
         }
 

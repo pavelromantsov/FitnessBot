@@ -21,7 +21,7 @@ namespace FitnessBot.TelegramBot
         private readonly UserService _userService;
         private readonly IScenarioContextRepository _contextRepository;
         private readonly System.Collections.Generic.List<IScenario> _scenarios;
-        
+
         // Handlers
         private readonly ICommandHandler[] _commandHandlers;
         private readonly ICallbackHandler[] _callbackHandlers;
@@ -171,9 +171,12 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Parse command
+            // Parse command (support both /command and command)
             var parts = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var command = parts.FirstOrDefault() ?? string.Empty;
+            var rawCommand = parts.FirstOrDefault() ?? string.Empty;
+
+            // Normalize command: add / if missing
+            var command = rawCommand.StartsWith('/') ? rawCommand : $"/{rawCommand}";
             var args = parts.Skip(1).ToArray();
 
             await HandleCommand(user, chatId, message, command, args, ct);
