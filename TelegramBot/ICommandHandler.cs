@@ -4,9 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FitnessBot.TelegramBot.Handlers
+namespace FitnessBot.TelegramBot
 {
-    internal interface ICommandHandler
+    public interface ICommandHandler
     {
+        Task<bool> HandleAsync(UpdateContext context, string command, string[] args);
+    }
+
+    public interface ICallbackHandler
+    {
+        Task<bool> HandleAsync(UpdateContext context, string data);
     }
 }
