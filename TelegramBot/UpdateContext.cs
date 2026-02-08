@@ -1,44 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FitnessBot.Core.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot;
+using DomainUser = FitnessBot.Core.Entities.User;
 
 namespace FitnessBot.TelegramBot
 {
     public sealed class UpdateContext
     {
         public ITelegramBotClient Bot { get; }
-        public UserDb User { get; }
+        public DomainUser User { get; }
         public long ChatId { get; }
-        public Message Message { get; }
-        public CallbackQuery CallbackQuery { get; }
-        public IScenarioRunner ScenarioRunner { get; }
-        public IAdminService AdminService { get; }
-        public IChartService ChartService { get; }
-        // + то, что реально используется в логике команд/колбеков
+        public Message? Message { get; }
+        public CallbackQuery? CallbackQuery { get; }
 
         public UpdateContext(
             ITelegramBotClient bot,
-            UserDb user,
+            DomainUser user,
             long chatId,
-            Message message,
-            CallbackQuery callbackQuery,
-        IScenarioRunner scenarioRunner,
-            IAdminService adminService,
-            IChartService chartService /* ... */)
+            Message? message,
+            CallbackQuery? callbackQuery)
         {
             Bot = bot;
             User = user;
             ChatId = chatId;
             Message = message;
             CallbackQuery = callbackQuery;
-            ScenarioRunner = scenarioRunner;
-            AdminService = adminService;
-            ChartService = chartService;
         }
     }
 }

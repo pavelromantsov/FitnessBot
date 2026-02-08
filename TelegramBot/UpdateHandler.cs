@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FitnessBot.Core.Services;
 using FitnessBot.Infrastructure.DataAccess;
 using FitnessBot.Scenarios;
+using FitnessBot.TelegramBot.Handlers;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -18,18 +19,12 @@ namespace FitnessBot.TelegramBot
     {
         private readonly ITelegramBotClient _botClient;
         private readonly UserService _userService;
-        private readonly BmiService _bmiService;
-        private readonly ActivityService _activityService;
-        private readonly NutritionService _nutritionService;
-        private readonly ReportService _reportService;
         private readonly IScenarioContextRepository _contextRepository;
-        private readonly IScenario[] _scenarios;
-        private readonly PgNutritionRepository _nutritionRepo;
-        private readonly PgActivityRepository _activityRepo;
-        private readonly AdminStatsService _adminStatsService;
-        private readonly ChartService _chartService;
-        private readonly ChartDataService _chartDataService;
-        private readonly ChartImageService _chartImageService;
+        private readonly System.Collections.Generic.List<IScenario> _scenarios;
+        
+        // Handlers
+        private readonly ICommandHandler[] _commandHandlers;
+        private readonly ICallbackHandler[] _callbackHandlers;
 
         public delegate void MessageEventHandler(string message);
         public event MessageEventHandler? OnHandleUpdateStarted;
@@ -38,33 +33,17 @@ namespace FitnessBot.TelegramBot
         public UpdateHandler(
             ITelegramBotClient botClient,
             UserService userService,
-            BmiService bmiService,
-            ActivityService activityService,
-            NutritionService nutritionService,
-            ReportService reportService,
             IScenarioContextRepository contextRepository,
-            IScenario[] scenarios,
-            PgNutritionRepository nutritionRepo,
-            PgActivityRepository activityRepo,
-            AdminStatsService adminStatsService,
-            ChartService chartService,
-            ChartDataService chartDataService,
-            ChartImageService chartImageService)
+            System.Collections.Generic.IEnumerable<IScenario> scenarios,
+            ICommandHandler[] commandHandlers,
+            ICallbackHandler[] callbackHandlers)
         {
             _botClient = botClient;
             _userService = userService;
-            _bmiService = bmiService;
-            _activityService = activityService;
-            _nutritionService = nutritionService;
-            _reportService = reportService;
             _contextRepository = contextRepository;
-            _scenarios = scenarios;
-            _nutritionRepo = nutritionRepo;
-            _activityRepo = activityRepo;
-            _adminStatsService = adminStatsService;
-            _chartService = chartService;
-            _chartDataService = chartDataService;
-            _chartImageService = chartImageService; // без дубля
+            _scenarios = scenarios.ToList();
+            _commandHandlers = commandHandlers;
+            _callbackHandlers = callbackHandlers;
         }
 
         public async Task HandleUpdateAsync(
@@ -72,30 +51,17 @@ namespace FitnessBot.TelegramBot
             Update update,
             CancellationToken cancellationToken)
         {
-            var text = update.Message?.Text
-                       ?? update.CallbackQuery?.Data
-                       ?? update.Type.ToString();
-
+            var text = update.Message?.Text ?? update.CallbackQuery?.Data ?? update.Type.ToString();
             OnHandleUpdateStarted?.Invoke(text);
 
             try
             {
-                switch (update.Type)
+                await (update switch
                 {
-                    case UpdateType.Message:
-                        if (update.Message != null)
-                            await OnMessage(update.Message, cancellationToken);
-                        break;
-
-                    case UpdateType.CallbackQuery:
-                        if (update.CallbackQuery != null)
-                            await OnCallbackQuery(update.CallbackQuery, cancellationToken);
-                        break;
-
-                    default:
-                        await OnUnknown(update, cancellationToken);
-                        break;
-                }
+                    { Message: { } message } => OnMessage(update, message, cancellationToken),
+                    { CallbackQuery: { } callbackQuery } => OnCallbackQuery(update, callbackQuery, cancellationToken),
+                    _ => OnUnknown(update, cancellationToken)
+                });
             }
             catch (Exception ex)
             {
@@ -105,25 +71,37 @@ namespace FitnessBot.TelegramBot
             OnHandleUpdateCompleted?.Invoke(text);
         }
 
+        public Task HandlePollingErrorAsync(
+            ITelegramBotClient botClient,
+            Exception exception,
+            CancellationToken cancellationToken)
+        {
+            Console.WriteLine($"❌ Ошибка polling: {exception}");
+            return Task.CompletedTask;
+        }
+
         public Task HandleErrorAsync(
             ITelegramBotClient botClient,
             Exception exception,
             HandleErrorSource source,
             CancellationToken cancellationToken)
         {
-            var errorMessage = exception switch
-            {
-                ApiRequestException apiRequestException =>
-                    $"Telegram API Error [{apiRequestException.ErrorCode}]: {apiRequestException.Message}",
-                _ => exception.ToString()
-            };
+            string message;
 
-            Console.WriteLine($"❌ Ошибка polling ({source}): {errorMessage}");
-            return Task.CompletedTask;
+            if (exception is ApiRequestException apiEx)
+            {
+                message = $"Telegram API Error [{apiEx.ErrorCode}] from {source}: {apiEx.Message}";
+            }
+            else
+            {
+                message = $"Unexpected error from {source}: {exception.Message}";
+            }
+
+            Console.WriteLine(message);
+            return Task.Delay(1000, cancellationToken);
         }
 
-
-        private async Task OnMessage(Message message, CancellationToken ct)
+        private async Task OnMessage(Update update, Message message, CancellationToken ct)
         {
             if (message.Text is null)
                 return;
@@ -141,7 +119,7 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // пользователь
+            // Get or register user
             var user = await _userService.GetByTelegramIdAsync(telegramId);
             if (user == null)
             {
@@ -165,16 +143,18 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
+            // Update user info
             user = await _userService.RegisterOrUpdateAsync(
                 telegramId,
                 firstName,
                 user.Age,
                 user.City);
 
-            var scenarioContext = await _contextRepository.GetContext(user.Id, ct);
+            // Check for active scenario
+            var context = await _contextRepository.GetContext(user.Id, ct);
 
-            if (message.Text.Equals("/cancel", StringComparison.OrdinalIgnoreCase)
-                && scenarioContext != null)
+            // Handle /cancel
+            if (message.Text.Equals("/cancel", StringComparison.OrdinalIgnoreCase) && context != null)
             {
                 await _contextRepository.ResetContext(user.Id, ct);
                 await _botClient.SendMessage(
@@ -184,48 +164,74 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            if (scenarioContext != null)
+            // Continue active scenario
+            if (context != null)
             {
-                await ProcessScenario(user, scenarioContext, message, ct);
+                await ProcessScenario(context, message, ct);
                 return;
             }
 
-            // команды
-            var parts = message.Text
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
+            // Parse command
+            var parts = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var command = parts.FirstOrDefault() ?? string.Empty;
             var args = parts.Skip(1).ToArray();
 
-            await HandleCommand(user, chatId, command, args, ct);
+            await HandleCommand(user, chatId, message, command, args, ct);
         }
 
-        private async Task OnCallbackQuery(CallbackQuery callbackQuery, CancellationToken ct)
+        private async Task HandleCommand(
+            DomainUser user,
+            long chatId,
+            Message message,
+            string command,
+            string[] args,
+            CancellationToken ct)
         {
-            var data = callbackQuery.Data ?? string.Empty;
-            var chatId = callbackQuery.Message?.Chat.Id ?? 0;
+            // Create UpdateContext
+            var context = new UpdateContext(
+                _botClient,
+                user,
+                chatId,
+                message,
+                null);
 
-            if (chatId == 0)
+            // Try each handler in order (priority matters!)
+            foreach (var handler in _commandHandlers)
             {
-                await _botClient.AnswerCallbackQuery(
-                    callbackQuery.Id,
-                    "Ошибка: чат не найден.",
-                    cancellationToken: ct);
-                return;
+                if (await handler.HandleAsync(context, command, args))
+                    return; // Command handled
             }
 
-            var user = await _userService.GetByTelegramIdAsync(callbackQuery.From.Id);
-            if (user == null)
-            {
-                await _botClient.AnswerCallbackQuery(
-                    callbackQuery.Id,
-                    "Пользователь не найден.",
-                    cancellationToken: ct);
-                return;
-            }
+            // No handler matched
+            await _botClient.SendMessage(
+                chatId,
+                "Неизвестная команда. Используйте /help.",
+                cancellationToken: ct);
+        }
 
+        private async Task OnCallbackQuery(Update update, CallbackQuery callbackQuery, CancellationToken ct)
+        {
             try
             {
+                var data = callbackQuery.Data ?? string.Empty;
+                Console.WriteLine($"Callback received: {data}");
+
+                var chatId = callbackQuery.Message?.Chat.Id ?? 0;
+                var telegramId = callbackQuery.From.Id;
+
+                if (chatId == 0)
+                    return;
+
+                var user = await _userService.GetByTelegramIdAsync(telegramId);
+                if (user == null)
+                {
+                    await _botClient.AnswerCallbackQuery(
+                        callbackQuery.Id,
+                        "Пользователь не найден.",
+                        cancellationToken: ct);
+                    return;
+                }
+
                 await HandleCallback(user, chatId, callbackQuery, data, ct);
             }
             catch (Exception ex)
@@ -238,11 +244,67 @@ namespace FitnessBot.TelegramBot
                         "Ошибка при обработке нажатия.",
                         cancellationToken: ct);
                 }
-                catch
-                {
-                    // ignore
-                }
+                catch { }
             }
+        }
+
+        private async Task HandleCallback(
+            DomainUser user,
+            long chatId,
+            CallbackQuery callbackQuery,
+            string data,
+            CancellationToken ct)
+        {
+            // Create UpdateContext
+            var context = new UpdateContext(
+                _botClient,
+                user,
+                chatId,
+                null,
+                callbackQuery);
+
+            // Try each handler in order
+            foreach (var handler in _callbackHandlers)
+            {
+                if (await handler.HandleAsync(context, data))
+                    return; // Callback handled
+            }
+
+            // No handler matched
+            await _botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                "Неизвестное действие.",
+                cancellationToken: ct);
+        }
+
+        private async Task ProcessScenario(
+            ScenarioContext context,
+            Message message,
+            CancellationToken ct)
+        {
+            var scenario = GetScenario(context.CurrentScenario);
+            var result = await scenario.HandleMessageAsync(_botClient, context, message, ct);
+
+            if (result == ScenarioResult.Completed)
+            {
+                await _contextRepository.ResetContext(context.UserId, ct);
+                await _botClient.SendMessage(
+                    message.Chat.Id,
+                    "Сценарий завершён. Используйте /start для других команд.",
+                    cancellationToken: ct);
+            }
+            else
+            {
+                await _contextRepository.SetContext(context.UserId, context, ct);
+            }
+        }
+
+        private IScenario GetScenario(ScenarioType type)
+        {
+            var scenario = _scenarios.FirstOrDefault(s => s.CanHandle(type));
+            if (scenario == null)
+                throw new InvalidOperationException($"Сценарий {type} не найден");
+            return scenario;
         }
 
         private async Task OnUnknown(Update update, CancellationToken ct)
@@ -258,69 +320,6 @@ namespace FitnessBot.TelegramBot
                 chatId,
                 "Неизвестный тип обновления.",
                 cancellationToken: ct);
-        }
-
-        private async Task ProcessScenario(
-            DomainUser user,
-            ScenarioContext context,
-            Message message,
-            CancellationToken ct)
-        {
-            var scenario = GetScenario(context.CurrentScenario);
-            var result = await scenario.HandleMessageAsync(_botClient, context, message, ct);
-
-            if (result == ScenarioResult.Completed)
-            {
-                await _contextRepository.ResetContext(user.Id, ct);
-                await _botClient.SendMessage(
-                    message.Chat.Id,
-                    "Сценарий завершён. Используйте /start для других команд.",
-                    cancellationToken: ct);
-            }
-            else
-            {
-                await _contextRepository.SetContext(user.Id, context, ct);
-                await _botClient.SendMessage(
-                    message.Chat.Id,
-                    "Для выхода из сценария используйте /cancel.",
-                    cancellationToken: ct);
-            }
-        }
-
-        private IScenario GetScenario(ScenarioType type)
-        {
-            var scenario = _scenarios.FirstOrDefault(s => s.CanHandle(type));
-            if (scenario == null)
-                throw new InvalidOperationException($"Сценарий {type} не найден");
-            return scenario;
-        }
-
-        // ---------------- Команды и callback’и ----------------
-        // Здесь просто оставляешь твой существующий код:
-        // методы HandleCommand, HandleCallback и все приватные хелперы,
-        // ровно как они сейчас в оригинальном UpdateHandler.cs,
-        // без изменений сигнатур.
-
-        private Task HandleCommand(
-            DomainUser user,
-            long chatId,
-            string command,
-            string[] args,
-            CancellationToken ct)
-        {
-            // оставь этот метод как в твоём исходном файле
-            throw new NotImplementedException();
-        }
-
-        private Task HandleCallback(
-            DomainUser user,
-            long chatId,
-            CallbackQuery callbackQuery,
-            string data,
-            CancellationToken ct)
-        {
-            // оставь этот метод как в твоём исходном файле
-            throw new NotImplementedException();
         }
     }
 }

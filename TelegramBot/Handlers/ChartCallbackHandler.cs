@@ -4,17 +4,16 @@ using System.Threading.Tasks;
 using FitnessBot.Core.Services;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FitnessBot.TelegramBot.Handlers
 {
-    public sealed class ChartsCommandsHandler : ICommandHandler
+    public sealed class ChartCallbackHandler : ICallbackHandler
     {
         private readonly ChartService _chartService;
         private readonly ChartDataService _chartDataService;
         private readonly ChartImageService _chartImageService;
 
-        public ChartsCommandsHandler(
+        public ChartCallbackHandler(
             ChartService chartService,
             ChartDataService chartDataService,
             ChartImageService chartImageService)
@@ -24,29 +23,38 @@ namespace FitnessBot.TelegramBot.Handlers
             _chartImageService = chartImageService;
         }
 
-        public async Task<bool> HandleAsync(UpdateContext context, string command, string[] args)
+        public async Task<bool> HandleAsync(UpdateContext context, string data)
         {
-            switch (command.ToLowerInvariant())
+            if (!data.StartsWith("chart_", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            await context.Bot.AnswerCallbackQuery(context.CallbackQuery!.Id, cancellationToken: default);
+
+            switch (data)
             {
-                case "/chart_calories":
+                case "chart_cal_7":
                     await ChartCaloriesCommand(context, 7);
-                    return true;
-
-                case "/chart_steps":
+                    break;
+                case "chart_cal_14":
+                    await ChartCaloriesCommand(context, 14);
+                    break;
+                case "chart_steps_7":
                     await ChartStepsCommand(context, 7);
-                    return true;
-
-                case "/chart_macros":
+                    break;
+                case "chart_steps_14":
+                    await ChartStepsCommand(context, 14);
+                    break;
+                case "chart_macros_7":
                     await ChartMacrosCommand(context, 7);
-                    return true;
-
-                case "/charts":
-                    await ChartsMenuCommand(context);
-                    return true;
-
+                    break;
+                case "chart_macros_14":
+                    await ChartMacrosCommand(context, 14);
+                    break;
                 default:
                     return false;
             }
+
+            return true;
         }
 
         private async Task ChartCaloriesCommand(UpdateContext ctx, int days)
@@ -60,7 +68,6 @@ namespace FitnessBot.TelegramBot.Handlers
 
                 var (caloriesIn, caloriesOut) = await _chartDataService.GetCaloriesDataAsync(ctx.User.Id, days);
 
-                // Проверка на пустые данные
                 if (!caloriesIn.Any() && !caloriesOut.Any())
                 {
                     await ctx.Bot.SendMessage(
@@ -76,9 +83,6 @@ namespace FitnessBot.TelegramBot.Handlers
                     caloriesOut,
                     $"Калории за последние {days} дней");
 
-                Console.WriteLine($"Chart URL: {chartUrl}");
-
-                // Скачиваем изображение
                 using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
 
                 await ctx.Bot.SendPhoto(
@@ -128,8 +132,6 @@ namespace FitnessBot.TelegramBot.Handlers
                     10000,
                     $"Шаги за последние {days} дней");
 
-                Console.WriteLine($"Chart URL: {chartUrl}");
-
                 using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
 
                 await ctx.Bot.SendPhoto(
@@ -176,8 +178,6 @@ namespace FitnessBot.TelegramBot.Handlers
                     macrosData,
                     $"Баланс БЖУ за последние {days} дней");
 
-                Console.WriteLine($"Chart URL: {chartUrl}");
-
                 using var imageStream = await _chartImageService.DownloadChartImageAsync(chartUrl);
 
                 var avgProtein = macrosData.Values.Average(m => m.protein);
@@ -202,34 +202,6 @@ namespace FitnessBot.TelegramBot.Handlers
                     "❌ Ошибка при генерации графика. Попробуйте позже.",
                     cancellationToken: default);
             }
-        }
-
-        private async Task ChartsMenuCommand(UpdateContext ctx)
-        {
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("📊 Калории (7 дней)", "chart_cal_7"),
-                    InlineKeyboardButton.WithCallbackData("📊 Калории (14 дней)", "chart_cal_14")
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("👣 Шаги (7 дней)", "chart_steps_7"),
-                    InlineKeyboardButton.WithCallbackData("👣 Шаги (14 дней)", "chart_steps_14")
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("🍖 БЖУ (7 дней)", "chart_macros_7"),
-                    InlineKeyboardButton.WithCallbackData("🍖 БЖУ (14 дней)", "chart_macros_14")
-                }
-            });
-
-            await ctx.Bot.SendMessage(
-                ctx.ChatId,
-                "📈 Выберите тип графика:",
-                replyMarkup: keyboard,
-                cancellationToken: default);
         }
     }
 }
