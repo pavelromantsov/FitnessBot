@@ -61,19 +61,29 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         public async Task SaveAsync(DailyGoal goal)
         {
-            await using var db = _connectionFactory();
+            await using var db = _connectionFactory(); // ИСПРАВЛЕНО: было _dataContextFactory
+
+            // Преобразуем в модель
             var model = Map(goal);
 
-            if (model.Id == 0)
+            // Проверяем, существует ли уже цель на эту дату для этого пользователя
+            var existingModel = await db.DailyGoals
+                .Where(g => g.UserId == model.UserId && g.Date == model.Date)
+                .FirstOrDefaultAsync();
+
+            if (existingModel != null)
             {
-                model.Id = await db.InsertWithInt64IdentityAsync(model);
+                // Обновляем существующую запись
+                model.Id = existingModel.Id;
+                await db.UpdateAsync(model);
+                goal.Id = model.Id;
             }
             else
             {
-                await db.UpdateAsync(model);
+                // Создаём новую запись
+                model.Id = await db.InsertWithInt64IdentityAsync(model);
+                goal.Id = model.Id;
             }
-
-            goal.Id = model.Id;
         }
 
         // ---------- BMI (IBmiRepository) ----------

@@ -41,7 +41,23 @@ namespace FitnessBot.TelegramBot.Handlers
                 return false;
             }
 
-            switch (command.ToLowerInvariant())
+            var normalizedCommand = command.Trim().ToLowerInvariant();
+
+            // Обработка кнопок с эмодзи и русским текстом
+            if (normalizedCommand.Contains("админ") && normalizedCommand.Contains("пользовател"))
+            {
+                await AdminUsersCommand(context);
+                return true;
+            }
+
+            if (normalizedCommand.Contains("админ") && normalizedCommand.Contains("статистика"))
+            {
+                await AdminStatsCommand(context);
+                return true;
+            }
+
+            // Обработка обычных команд
+            switch (normalizedCommand)
             {
                 case "/admin_users":
                     await AdminUsersCommand(context);
@@ -75,6 +91,7 @@ namespace FitnessBot.TelegramBot.Handlers
                     return false;
             }
         }
+
 
         private static bool IsAdmin(User user) => user.Role == UserRole.Admin;
 

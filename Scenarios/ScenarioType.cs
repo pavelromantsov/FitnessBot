@@ -13,6 +13,10 @@
         SetDailyGoal = 8,
         ActivityReminderSettings = 9,
         AddMeal = 10,
-        ConnectGoogleFit = 11
+        ConnectGoogleFit = 11,
+        EditProfileAge = 12,
+        EditProfileCity = 13,
+        EditProfileHeightWeight
+
     }
 }

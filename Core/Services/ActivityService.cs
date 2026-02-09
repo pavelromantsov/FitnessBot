@@ -59,8 +59,6 @@ namespace FitnessBot.Core.Services
             return (totalCalories, totalSteps);
         }
 
-
-
         public async Task<IReadOnlyList<Activity>> GetMergedForPeriodAsync(long userId, DateTime from, DateTime to)
         {
             var list = await _activities.GetByUserAndPeriodAsync(userId, from, to);

@@ -11,7 +11,6 @@ using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 
-
 namespace FitnessBot
 {
     public class Program
@@ -44,7 +43,7 @@ namespace FitnessBot
             var bmiService = new BmiService(notificationRepo);
             var activityService = new ActivityService(activityRepo);
             var nutritionService = new NutritionService(nutritionRepo);
-            var reportService = new ReportService(activityService, nutritionService);
+            var reportService = new ReportService(nutritionRepo, activityRepo, notificationRepo);
             var adminStatsRepo = new PgAdminStatsRepository(dataContextFactory);
             var adminStatsService = new AdminStatsService(adminStatsRepo);
             var chartService = new ChartService();
@@ -68,7 +67,10 @@ namespace FitnessBot
                 new SetDailyGoalScenario(notificationRepo),
                 new ActivityReminderSettingsScenario(userService),
                 new AddMealScenario(nutritionService),
-                new ConnectGoogleFitScenario(userService)
+                new ConnectGoogleFitScenario(userService),
+                new EditProfileAgeScenario(userService),
+                new EditProfileCityScenario(userService),
+                new EditProfileHeightWeightScenario(bmiService)
             };
 
             // 4. Telegram bot
@@ -83,7 +85,7 @@ namespace FitnessBot
                 new UserCommandsHandler(
                     bmiService,
                     nutritionRepo,
-                    activityRepo,
+                    activityService,
                     reportService,
                     contextRepository,
                     scenarios)
@@ -95,7 +97,10 @@ namespace FitnessBot
                 new AdminCallbackHandler(userService),
                 new MealCallbackHandler(userService, nutritionRepo, contextRepository),
                 new ActivityReminderCallbackHandler(userService),
-                new ChartCallbackHandler(chartService, chartDataService, chartImageService)
+                new ChartCallbackHandler(chartService, chartDataService, chartImageService),
+                new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
+                new ProfileCallbackHandler(userService, bmiService, contextRepository),
+                new BmiCallbackHandler(contextRepository)
             };
 
             // 6. UpdateHandler с новой архитектурой
@@ -114,8 +119,8 @@ namespace FitnessBot
 
             var cts = new CancellationTokenSource();
 
-            // 7. Background Tasks
-            var backgroundRunner = new BackgroundTaskRunner();
+            // 7. Background Tasks - ДОБАВЛЕН using
+            using var backgroundRunner = new BackgroundTaskRunner();
 
             backgroundRunner.AddTask(new MealReminderBackgroundTask(
                 userService,
@@ -145,23 +150,41 @@ namespace FitnessBot
                 notificationRepo,
                 notificationService));
 
-            // запускаем фоновые задачи
-            backgroundRunner.StartTasks(cts.Token);
+            // Обработка Ctrl+C для graceful shutdown
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                e.Cancel = true; // Предотвращаем немедленное завершение
+                cts.Cancel();
+                Console.WriteLine("\nПолучен сигнал остановки. Завершение работы...");
+            };
 
-            // запускаем бота
-            botClient.StartReceiving(
-                updateHandler,
-                receiverOptions,
-                cts.Token);
+            try
+            {
+                // запускаем фоновые задачи
+                backgroundRunner.StartTasks(cts.Token);
 
-            var me = await botClient.GetMe();
-            Console.WriteLine($"Бот {me.FirstName} запущен. Нажмите Enter для остановки.");
+                // запускаем бота
+                botClient.StartReceiving(
+                    updateHandler,
+                    receiverOptions,
+                    cts.Token);
 
-            Console.ReadLine();
-            cts.Cancel();
+                var me = await botClient.GetMe();
+                Console.WriteLine($"Бот {me.FirstName} запущен. Нажмите Ctrl+C для остановки.");
 
-            // корректно останавливаем фоновые задачи
-            await backgroundRunner.StopTasks(CancellationToken.None);
+                // Ждём сигнала остановки
+                await Task.Delay(Timeout.Infinite, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Остановка бота...");
+            }
+            finally
+            {
+                // корректно останавливаем фоновые задачи
+                await backgroundRunner.StopTasks(CancellationToken.None);
+                Console.WriteLine("Бот остановлен.");
+            }
         }
     }
 }

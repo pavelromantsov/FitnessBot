@@ -105,10 +105,8 @@ namespace FitnessBot.BackgroundTasks
             DateTime now,
             CancellationToken ct)
         {
-            // ← ВОТ ЗДЕСЬ ДОБАВЛЕНА ПРОВЕРКА НАСТРОЕК
             var user = await _userService.GetByIdAsync(userId);
 
-            // Проверяем настройки пользователя
             if (user == null || !user.ActivityRemindersEnabled || !user.MorningReminderEnabled)
                 return;
 
@@ -154,10 +152,8 @@ namespace FitnessBot.BackgroundTasks
             DateTime now,
             CancellationToken ct)
         {
-            // ← ВОТ ЗДЕСЬ ДОБАВЛЕНА ПРОВЕРКА НАСТРОЕК
             var user = await _userService.GetByIdAsync(userId);
 
-            // Проверяем настройки пользователя
             if (user == null || !user.ActivityRemindersEnabled || !user.LunchReminderEnabled)
                 return;
 
@@ -211,11 +207,9 @@ namespace FitnessBot.BackgroundTasks
             DateTime now,
             CancellationToken ct)
         {
-            // ← ВОТ ЗДЕСЬ ДОБАВЛЕНА ПРОВЕРКА НАСТРОЕК
             var user = await _userService.GetByIdAsync(userId);
 
-            // Проверяем настройки пользователя
-            if (user == null || !user.ActivityRemindersEnabled || !user.AfternoonReminderEnabled)
+           if (user == null || !user.ActivityRemindersEnabled || !user.AfternoonReminderEnabled)
                 return;
 
             // Проверяем, не отправляли ли уже сегодня
@@ -252,10 +246,8 @@ namespace FitnessBot.BackgroundTasks
             DateTime now,
             CancellationToken ct)
         {
-            // ← ВОТ ЗДЕСЬ ДОБАВЛЕНА ПРОВЕРКА НАСТРОЕК
             var user = await _userService.GetByIdAsync(userId);
 
-            // Проверяем настройки пользователя
             if (user == null || !user.ActivityRemindersEnabled || !user.EveningReminderEnabled)
                 return;
 
@@ -308,7 +300,6 @@ namespace FitnessBot.BackgroundTasks
             }
         }
 
-        // Вспомогательный метод: проверка, отправляли ли уже напоминание сегодня
         private async Task<bool> WasReminderSentToday(
             long userId,
             string reminderType,

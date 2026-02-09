@@ -67,7 +67,7 @@ namespace FitnessBot.BackgroundTasks
                 catch (ApiRequestException ex) when (ex.Message.Contains("chat not found", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.Error.WriteLine($"[NotificationSender] chat not found for notification {notification.Id}, userId={notification.UserId}");
-                    // чтобы не мучать этот notification бесконечно:
+
                     await _notificationService.MarkSentAsync(notification.Id, now);
                 }
                 catch (Exception ex)

@@ -1,32 +1,45 @@
-﻿namespace FitnessBot.Core.Services
+﻿using FitnessBot.Core.Abstractions;
+using FitnessBot.Core.Entities;
+
+namespace FitnessBot.Core.Services
 {
     public class ReportService
     {
-        private readonly ActivityService activityService;
-        private readonly NutritionService nutritionService;
+        private readonly IMealRepository _mealRepository;
+        private readonly IActivityRepository _activityRepository;
+        private readonly IDailyGoalRepository _dailyGoalRepository; 
 
-        public ReportService(ActivityService activityService, NutritionService nutritionService)
+        public ReportService(
+            IMealRepository mealRepository,
+            IActivityRepository activityRepository,
+            IDailyGoalRepository dailyGoalRepository) 
         {
-            this.activityService = activityService;
-            this.nutritionService = nutritionService;
+            _mealRepository = mealRepository;
+            _activityRepository = activityRepository;
+            _dailyGoalRepository = dailyGoalRepository; 
         }
 
-        public async Task<string> BuildDailySummaryAsync(long userId, DateTime dayUtc)
+        public async Task<string> BuildDailySummaryAsync(long userId, DateTime date)
         {
-            var from = dayUtc.Date;
-            var to = from.AddDays(1);
+            var startDate = date.Date;
+            var endDate = startDate.AddDays(1);
 
-            var (caloriesOut, steps) = await activityService.GetMergedTotalsAsync(userId, from, to);
-            var (calIn, p, f, c) = await nutritionService.GetTotalsAsync(userId, from, to);
+            var meals = await _mealRepository.GetByUserAndPeriodAsync(userId, startDate, endDate);
+            var activities = await _activityRepository.GetByUserAndPeriodAsync(userId, startDate, endDate);
+
+            var totalCaloriesIn = meals.Sum(m => m.Calories);
+            var totalCaloriesOut = activities.Sum(a => a.CaloriesBurned);
+            var totalSteps = activities.Sum(a => a.Steps);
 
             return
-                $"- Шаги: {steps}\n" +
-                $"- Калории потрачено: {caloriesOut:F0}\n" +
-                $"- Калории съедено: {calIn:F0}\n" +
-                $"- БЖУ: {p:F0} / {f:F0} / {c:F0}";
+                $"Калории: {totalCaloriesIn:F0} (съедено) / {totalCaloriesOut:F0} (потрачено)\n" +
+                $"Шаги: {totalSteps}\n" +
+                $"Баланс: {(totalCaloriesIn - totalCaloriesOut):F0} ккал";
         }
 
-
-
+        public async Task<DailyGoal?> GetDailyGoalAsync(long userId, DateTime date)
+        {
+            return await _dailyGoalRepository.GetByUserAndDateAsync(userId, date.Date);
+        }
     }
 }

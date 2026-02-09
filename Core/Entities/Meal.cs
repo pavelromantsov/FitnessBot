@@ -6,7 +6,7 @@
         public long UserId { get; set; }
 
         public DateTime DateTime { get; set; }
-        public string MealType { get; set; } = "unknown"; // breakfast/lunch/dinner/snack
+        public string MealType { get; set; } = "unknown"; 
 
         public double Calories { get; set; }
         public double Protein { get; set; }

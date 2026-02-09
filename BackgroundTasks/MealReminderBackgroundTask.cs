@@ -20,7 +20,6 @@ namespace FitnessBot.BackgroundTasks
             _notificationService = notificationService;
         }
 
-        // Реализация интерфейса
         public async Task Start(CancellationToken ct)
         {
             var nowUtc = DateTime.UtcNow;
@@ -32,7 +31,7 @@ namespace FitnessBot.BackgroundTasks
             {
                 ct.ThrowIfCancellationRequested();
 
-                var localNow = nowUtc; // TODO: таймзона
+                var localNow = nowUtc; 
 
                 await CheckMealReminder(user, "BreakfastReminder", user.BreakfastTime, today, localNow, ct);
                 await CheckMealReminder(user, "LunchReminder", user.LunchTime, today, localNow, ct);

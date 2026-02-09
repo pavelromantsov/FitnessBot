@@ -5,7 +5,6 @@
         public long Id { get; set; }
         public long UserId { get; set; }
 
-        // Тип: BreakfastReminder / LunchReminder / DinnerReminder / GoalReminder / Error и т.п.
         public string Type { get; set; } = null!;
 
         public string Text { get; set; } = null!;

@@ -72,7 +72,6 @@ namespace FitnessBot.BackgroundTasks
                 }
             }
         }
-
         private async Task CheckUserDailyGoal(
             long userId,
             DateTime today,

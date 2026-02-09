@@ -171,13 +171,24 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Parse command (support both /command and command)
-            var parts = message.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var rawCommand = parts.FirstOrDefault() ?? string.Empty;
+            // Parse command (support both /command and button text)
+            var messageText = message.Text;
+            string command;
+            string[] args;
 
-            // Normalize command: add / if missing
-            var command = rawCommand.StartsWith('/') ? rawCommand : $"/{rawCommand}";
-            var args = parts.Skip(1).ToArray();
+            if (messageText.StartsWith('/'))
+            {
+                // Это команда с /
+                var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                command = parts.FirstOrDefault() ?? string.Empty;
+                args = parts.Skip(1).ToArray();
+            }
+            else
+            {
+                // Это текст кнопки или обычный текст - передаём как есть
+                command = messageText;
+                args = Array.Empty<string>();
+            }
 
             await HandleCommand(user, chatId, message, command, args, ct);
         }

@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Scenarios\BmiScenari.cs" />
+    <Compile Remove="Scenarios\EditProfileNameScenario.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Infrastructure\Migrations\" />
   </ItemGroup>
 

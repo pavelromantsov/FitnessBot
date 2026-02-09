@@ -10,6 +10,6 @@
         public int ActiveMinutes { get; set; }
         public double CaloriesBurned { get; set; }
 
-        public string Source { get; set; } = "manual"; // manual / google_fit
+        public string Source { get; set; } = "manual"; 
     }
 }
