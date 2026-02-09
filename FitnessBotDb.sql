@@ -25,15 +25,6 @@ create table if not exists users
 create index if not exists idx_users_last_activity
     on users (last_activity_at);
 
--- =============================================
--- Table: admins
--- =============================================
-create table if not exists admins
-(
-    id       bigserial primary key,
-    user_id  bigint      not null references users (id) on delete cascade,
-    notes    text
-);
 
 -- =============================================
 -- Table: activities
