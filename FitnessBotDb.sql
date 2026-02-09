@@ -199,3 +199,9 @@ create index if not exists idx_notifications_user_scheduled
 
     CREATE UNIQUE INDEX ux_activities_user_date_source
     ON activities ("user_id", "date", "source");
+
+-- =============================================
+-- Alter table: error_logs (add user_id)
+-- ============================================
+
+    ALTER TABLE error_logs ADD COLUMN user_id BIGINT;

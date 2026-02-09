@@ -1,5 +1,6 @@
 ﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
+using FitnessBot.Infrastructure.DataAccess;
 using Telegram.Bot.Types;
 using User = FitnessBot.Core.Entities.User;
 
@@ -8,6 +9,7 @@ namespace FitnessBot.Core.Services
     public class UserService
     {
         private readonly IUserRepository _users;
+        private readonly IUserRepository _userRepository;
 
         public UserService(IUserRepository users)
         {
@@ -84,6 +86,11 @@ namespace FitnessBot.Core.Services
             user.GoogleFitTokenExpiresAt = expiresAtUtc;
 
             await _users.SaveAsync(user);
+        }
+
+        public async Task UpdateAsync(User user)
+        {
+            await _userRepository.UpdateAsync(user);
         }
     }
 }

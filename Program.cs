@@ -39,6 +39,10 @@ namespace FitnessBot
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
 
+            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);
+            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);
+            var contentRepo = new PgContentItemRepository(dataContextFactory);
+
             var userService = new UserService(userRepo);
             var bmiService = new BmiService(notificationRepo);
             var activityService = new ActivityService(activityRepo);
@@ -77,10 +81,16 @@ namespace FitnessBot
             var botClient = new TelegramBotClient(botToken);
 
             // 5. HANDLERS (в порядке приоритета!)
-            // Command Handlers
+            // Command Handlers - ИСПРАВЛЕНО:
             var commandHandlers = new ICommandHandler[]
             {
-                new AdminCommandsHandler(userService, adminStatsService),
+                new AdminCommandsHandler(
+                    userService,
+                    adminStatsService,
+                    errorLogRepo,      // IErrorLogRepository
+                    contentRepo,       // IContentItemRepository
+                    changeLogRepo      // IChangeLogRepository
+                ),
                 new ChartsCommandsHandler(chartService, chartDataService, chartImageService),
                 new UserCommandsHandler(
                     bmiService,
@@ -153,7 +163,7 @@ namespace FitnessBot
             // Обработка Ctrl+C для graceful shutdown
             Console.CancelKeyPress += (sender, e) =>
             {
-                e.Cancel = true; // Предотвращаем немедленное завершение
+                e.Cancel = true;
                 cts.Cancel();
                 Console.WriteLine("\nПолучен сигнал остановки. Завершение работы...");
             };

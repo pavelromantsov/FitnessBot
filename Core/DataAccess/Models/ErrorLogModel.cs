@@ -8,6 +8,9 @@ namespace FitnessBot.Core.DataAccess.Models
         [PrimaryKey, Identity, Column("id")]
         public long Id { get; set; }
 
+        [Column("user_id"), Nullable]  
+        public long? UserId { get; set; }
+
         [Column("timestamp"), NotNull]
         public DateTime Timestamp { get; set; }
 

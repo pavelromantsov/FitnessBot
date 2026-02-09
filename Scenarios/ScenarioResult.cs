@@ -3,6 +3,7 @@
     public enum ScenarioResult
     {
         InProgress,
-        Completed
+        Completed,
+        Failed
     }
 }

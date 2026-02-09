@@ -12,5 +12,6 @@ namespace FitnessBot.Core.Abstractions
         Task<IReadOnlyList<User>> GetAllAsync();
         Task<User?> GetByTelegramIdAsync(long telegramId, CancellationToken ct);
         Task<IReadOnlyList<User>> FindByNameAsync(string namePart);
+        Task UpdateAsync(User user);
     }
 }

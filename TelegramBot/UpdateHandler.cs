@@ -1,16 +1,11 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using FitnessBot.Core.Abstractions;
+using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using FitnessBot.Infrastructure.DataAccess;
 using FitnessBot.Scenarios;
-using FitnessBot.TelegramBot.Handlers;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using DomainUser = FitnessBot.Core.Entities.User;
 
 namespace FitnessBot.TelegramBot
@@ -21,7 +16,8 @@ namespace FitnessBot.TelegramBot
         private readonly UserService _userService;
         private readonly IScenarioContextRepository _contextRepository;
         private readonly System.Collections.Generic.List<IScenario> _scenarios;
-
+        private readonly IErrorLogRepository _errorLog;
+        
         // Handlers
         private readonly ICommandHandler[] _commandHandlers;
         private readonly ICallbackHandler[] _callbackHandlers;
@@ -29,6 +25,7 @@ namespace FitnessBot.TelegramBot
         public delegate void MessageEventHandler(string message);
         public event MessageEventHandler? OnHandleUpdateStarted;
         public event MessageEventHandler? OnHandleUpdateCompleted;
+
 
         public UpdateHandler(
             ITelegramBotClient botClient,
@@ -66,6 +63,20 @@ namespace FitnessBot.TelegramBot
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка обработки обновления: {ex}");
+                
+                await _errorLog.AddAsync(new ErrorLog
+                {
+                    Level = "Error",
+                    Message = $"Update {update.Id}: {ex.Message}",
+                    StackTrace = ex.StackTrace,
+                    ContextJson = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        UpdateId = update.Id,
+                        UpdateType = update.Type.ToString(),
+                        UserId = update.Message?.From?.Id ?? update.CallbackQuery?.From?.Id
+                    }),
+                    Timestamp = DateTime.UtcNow
+                });
             }
 
             OnHandleUpdateCompleted?.Invoke(text);

@@ -53,8 +53,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             BreakfastTime = u.BreakfastTime,
             LunchTime = u.LunchTime,
             DinnerTime = u.DinnerTime,
-            HeightCm= u.HeightCm,
-            WeightKg= u.WeightKg,
+            HeightCm = u.HeightCm,
+            WeightKg = u.WeightKg,
             ActivityRemindersEnabled = u.ActivityRemindersEnabled,
             MorningReminderEnabled = u.MorningReminderEnabled,
             LunchReminderEnabled = u.LunchReminderEnabled,
@@ -179,6 +179,12 @@ namespace FitnessBot.Infrastructure.DataAccess
                 .ToListAsync();
 
             return models.Select(Map).ToList();
+        }
+        public async Task UpdateAsync(User user)
+        {
+            await using var db = _connectionFactory();
+            var model = Map(user);
+            await db.UpdateAsync(model);
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using FitnessBot.TelegramBot.DTO;
@@ -13,22 +14,28 @@ namespace FitnessBot.TelegramBot.Handlers
     {
         private readonly UserService _userService;
         private readonly AdminStatsService _adminStatsService;
+        private readonly IErrorLogRepository _errorLogRepo;
+        private readonly IContentItemRepository _contentRepo;
+        private readonly IChangeLogRepository _changeLogRepo;
 
         public AdminCommandsHandler(
             UserService userService,
-            AdminStatsService adminStatsService)
+            AdminStatsService adminStatsService,
+            IErrorLogRepository errorLogRepo,
+            IContentItemRepository contentRepo,
+            IChangeLogRepository changeLogRepo)
         {
             _userService = userService;
             _adminStatsService = adminStatsService;
+            _errorLogRepo = errorLogRepo;
+            _contentRepo = contentRepo;
+            _changeLogRepo = changeLogRepo;
         }
 
         public async Task<bool> HandleAsync(UpdateContext context, string command, string[] args)
         {
-            // Only handle if user is admin
             if (!IsAdmin(context.User))
             {
-                // For admin commands, return false so they get "unknown command" message
-                // Or you can send custom message here and return true
                 if (command.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) ||
                     command.StartsWith("/make_", StringComparison.OrdinalIgnoreCase))
                 {
@@ -43,6 +50,8 @@ namespace FitnessBot.TelegramBot.Handlers
 
             var normalizedCommand = command.Trim().ToLowerInvariant();
 
+            Console.WriteLine($"DEBUG AdminCommandsHandler: '{normalizedCommand}'");
+
             // Обработка кнопок с эмодзи и русским текстом
             if (normalizedCommand.Contains("админ") && normalizedCommand.Contains("пользовател"))
             {
@@ -56,42 +65,100 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            // Обработка обычных команд
-            switch (normalizedCommand)
+            // Команды списка пользователей
+            if (normalizedCommand.Contains("admin_users") || normalizedCommand == "/admin_users")
             {
-                case "/admin_users":
-                    await AdminUsersCommand(context);
-                    return true;
-
-                case "/admin_user":
-                    await AdminUserDetailsCommand(context, args);
-                    return true;
-
-                case "/make_admin":
-                    await MakeAdminCommand(context, args);
-                    return true;
-
-                case "/make_user":
-                    await MakeUserCommand(context, args);
-                    return true;
-
-                case "/admin_find":
-                    await AdminFindUserCommand(context, args);
-                    return true;
-
-                case "/admin_activity":
-                    await AdminActivityCommand(context);
-                    return true;
-
-                case "/admin_stats":
-                    await AdminStatsCommand(context);
-                    return true;
-
-                default:
-                    return false;
+                await AdminUsersCommand(context);
+                return true;
             }
-        }
 
+            // Детали пользователя
+            if (normalizedCommand.Contains("admin_user") || normalizedCommand == "/admin_user")
+            {
+                await AdminUserDetailsCommand(context, args);
+                return true;
+            }
+
+            // Назначить администратором
+            if (normalizedCommand.Contains("make_admin") || normalizedCommand == "/make_admin")
+            {
+                await MakeAdminCommand(context, args);
+                return true;
+            }
+
+            // Снять с роли администратора
+            if (normalizedCommand.Contains("make_user") || normalizedCommand == "/make_user")
+            {
+                await MakeUserCommand(context, args);
+                return true;
+            }
+
+            // Поиск пользователя
+            if (normalizedCommand.Contains("admin_find") || normalizedCommand == "/admin_find")
+            {
+                await AdminFindUserCommand(context, args);
+                return true;
+            }
+
+            // Активность пользователей
+            if (normalizedCommand.Contains("admin_activity") || normalizedCommand == "/admin_activity")
+            {
+                await AdminActivityCommand(context);
+                return true;
+            }
+
+            // Статистика
+            if (normalizedCommand.Contains("admin_stats") || normalizedCommand == "/admin_stats")
+            {
+                await AdminStatsCommand(context);
+                return true;
+            }
+
+            // Логи ошибок
+            if (normalizedCommand.Contains("error_logs") || normalizedCommand == "/error_logs")
+            {
+                await ErrorLogCommand(context);
+                return true;
+            }
+
+            // Статистика контента
+            if (normalizedCommand.Contains("content_stats") || normalizedCommand == "/content_stats")
+            {
+                await ContentStatsCommand(context);
+                return true;
+            }
+
+            // История изменений
+            if (normalizedCommand.Contains("change_log") || normalizedCommand == "/change_log")
+            {
+                await ChangeLogCommand(context);
+                return true;
+            }
+
+            // Тестовая запись в changelog
+            if (normalizedCommand.Contains("test_changelog") || normalizedCommand == "/test_changelog")
+            {
+                await TestChangeLogCommand(context);
+                return true;
+            }
+
+            // Тестовая ошибка
+            if (normalizedCommand.Contains("test_error") || normalizedCommand == "/test_error")
+            {
+                await TestErrorLogCommand(context);
+                return true;
+            }
+
+            // Просмотр логов ошибок
+            if (normalizedCommand.Contains("errorlog") || normalizedCommand == "/errorlog")
+            {
+                await ErrorLogCommand(context);
+                return true;
+            }
+
+            Console.WriteLine($"DEBUG AdminCommandsHandler: Команда не распознана");
+            return false;
+        }
 
         private static bool IsAdmin(User user) => user.Role == UserRole.Admin;
 
@@ -175,8 +242,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 return;
             }
 
-            var ok = await _userService.MakeAdminAsync(targetTelegramId);
-            if (!ok)
+            var targetUser = await _userService.GetByTelegramIdAsync(targetTelegramId);
+            if (targetUser == null)
             {
                 await ctx.Bot.SendMessage(
                     ctx.ChatId,
@@ -185,9 +252,28 @@ namespace FitnessBot.TelegramBot.Handlers
                 return;
             }
 
+            var ok = await _userService.MakeAdminAsync(targetTelegramId);
+            if (!ok)
+            {
+                await ctx.Bot.SendMessage(
+                    ctx.ChatId,
+                    "Не удалось назначить администратора.",
+                    cancellationToken: default);
+                return;
+            }
+
+            // Логируем действие
+            await _changeLogRepo.AddAsync(new ChangeLog
+            {
+                AdminUserId = ctx.User.Id,
+                ChangeType = "PromoteToAdmin",
+                Details = $"User {targetUser.Name} (ID: {targetUser.Id}) promoted to Admin",
+                Timestamp = DateTime.UtcNow
+            });
+
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                $"Пользователь с TelegramId={targetTelegramId} назначен администратором.",
+                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) назначен администратором.",
                 cancellationToken: default);
         }
 
@@ -202,8 +288,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 return;
             }
 
-            var ok = await _userService.MakeUserAsync(targetTelegramId);
-            if (!ok)
+            var targetUser = await _userService.GetByTelegramIdAsync(targetTelegramId);
+            if (targetUser == null)
             {
                 await ctx.Bot.SendMessage(
                     ctx.ChatId,
@@ -212,9 +298,28 @@ namespace FitnessBot.TelegramBot.Handlers
                 return;
             }
 
+            var ok = await _userService.MakeUserAsync(targetTelegramId);
+            if (!ok)
+            {
+                await ctx.Bot.SendMessage(
+                    ctx.ChatId,
+                    "Не удалось изменить роль.",
+                    cancellationToken: default);
+                return;
+            }
+
+            // Логируем действие
+            await _changeLogRepo.AddAsync(new ChangeLog
+            {
+                AdminUserId = ctx.User.Id,
+                ChangeType = "DemoteToUser",
+                Details = $"User {targetUser.Name} (ID: {targetUser.Id}) demoted to User",
+                Timestamp = DateTime.UtcNow
+            });
+
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                $"Пользователь с TelegramId={targetTelegramId} теперь обычный пользователь.",
+                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) теперь обычный пользователь.",
                 cancellationToken: default);
         }
 
@@ -338,6 +443,153 @@ namespace FitnessBot.TelegramBot.Handlers
                 ctx.ChatId,
                 text,
                 cancellationToken: default);
+        }
+
+        private async Task ContentStatsCommand(UpdateContext ctx)
+        {
+            if (ctx.User.Role != UserRole.Admin)
+                return;
+
+            var totalSize = await _contentRepo.GetTotalSizeAsync();
+            var sizeMb = totalSize / (1024.0 * 1024.0);
+
+            await ctx.Bot.SendMessage(
+                ctx.ChatId,
+                $"📊 **Статистика контента:**\n\n" +
+                $"Всего загружено: {sizeMb:F2} МБ",
+                cancellationToken: default);
+        }
+
+        private async Task ChangeLogCommand(UpdateContext ctx)
+        {
+            if (ctx.User.Role != UserRole.Admin)
+                return;
+
+            var changes = await _changeLogRepo.GetRecentAsync(20);
+
+            var text = "📜 **История изменений:**\n\n";
+
+            foreach (var change in changes)
+            {
+                if (!change.AdminUserId.HasValue)
+                    continue;
+
+                var admin = await _userService.GetByIdAsync(change.AdminUserId.Value);
+
+                if (admin != null)
+                {
+                    text += $"🕐 {change.Timestamp:dd.MM HH:mm}\n";
+                    text += $"👤 Администратор: {admin.Name}\n";
+                    text += $"📝 {change.ChangeType}: {change.Details}\n\n";
+                }
+            }
+
+            if (changes.Count == 0)
+            {
+                text += "История пуста.";
+            }
+
+            await ctx.Bot.SendMessage(ctx.ChatId, text, cancellationToken: default);
+        }
+
+        private async Task TestChangeLogCommand(UpdateContext ctx)
+        {
+            if (ctx.User.Role != UserRole.Admin)
+                return;
+
+            try
+            {
+                await _changeLogRepo.AddAsync(new ChangeLog
+                {
+                    AdminUserId = ctx.User.Id,
+                    ChangeType = "TestAction",
+                    Details = "Тестовая запись для проверки логирования",
+                    Timestamp = DateTime.UtcNow
+                });
+
+                Console.WriteLine("✅ Запись добавлена в change_logs");
+
+                // Retry логика для отправки сообщения
+                for (int i = 0; i < 3; i++)
+                {
+                    try
+                    {
+                        await ctx.Bot.SendMessage(
+                            ctx.ChatId,
+                            "✅ Тестовая запись добавлена в change_logs. Проверьте командой /change_log",
+                            cancellationToken: default);
+                        break; // Успешно отправлено
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Попытка {i + 1}/3 не удалась: {ex.Message}");
+                        if (i < 2)
+                            await Task.Delay(1000); // Ждём 1 секунду перед повтором
+                        else
+                            throw; // После 3 попыток пробрасываем ошибку
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка в TestChangeLogCommand: {ex.Message}");
+            }
+        }
+
+
+        private async Task TestErrorLogCommand(UpdateContext ctx)
+        {
+            if (ctx.User.Role != UserRole.Admin)
+                return;
+
+            try
+            {
+                throw new InvalidOperationException("Тестовая ошибка для проверки логирования");
+            }
+            catch (Exception ex)
+            {
+                await _errorLogRepo.AddAsync(new ErrorLog
+                {
+                    Id = ctx.User.Id,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace,
+                    Timestamp = DateTime.UtcNow,
+                    Level = "Error"
+                });
+
+                await ctx.Bot.SendMessage(
+                    ctx.ChatId,
+                    "✅ Тестовая ошибка залогирована. Проверьте командой /errorlog",
+                    cancellationToken: default);
+            }
+        }
+
+        private async Task ErrorLogCommand(UpdateContext ctx)
+        {
+            if (ctx.User.Role != UserRole.Admin)
+                return;
+
+            var errors = await _errorLogRepo.GetRecentAsync(10);
+
+            var text = "🔴 **Последние ошибки:**\n\n";
+
+            foreach (var error in errors)
+            {
+                var user = await _userService.GetByIdAsync(error.Id);
+
+                text += $"🕐 {error.Timestamp:dd.MM.yyyy HH:mm}\n";
+                text += $"👤 Пользователь: {user?.Name ?? "Unknown"} (ID: {error.Id})\n";
+                text += $"❌ Ошибка: {error.Message}\n";
+                text += $"Level: {error.Level}\n";
+                text += "---\n\n";
+            }
+
+            if (errors.Count == 0)
+            {
+                text += "Ошибок не найдено.";
+            }
+
+            await ctx.Bot.SendMessage(ctx.ChatId, text, cancellationToken: default);
         }
     }
 }

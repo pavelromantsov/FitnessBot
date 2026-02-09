@@ -24,7 +24,7 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         // ---------- DailyGoal (IDailyGoalRepository) ----------
 
-        private static DailyGoalModel Map(DailyGoal g) => new()
+        private static DailyGoalModel MapDailyGoal(DailyGoal g) => new()
         {
             Id = g.Id,
             UserId = g.UserId,
@@ -36,7 +36,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             CompletedAt = g.CompletedAt
         };
 
-        private static DailyGoal Map(DailyGoalModel m) => new()
+        private static DailyGoal MapDailyGoal(DailyGoalModel m) => new()
         {
             Id = m.Id,
             UserId = m.UserId,
@@ -54,33 +54,29 @@ namespace FitnessBot.Infrastructure.DataAccess
 
             var model = await db.DailyGoals
                 .Where(g => g.UserId == userId && g.Date == date.Date)
-                .FirstOrDefaultAsync(); // DailyGoalModel?
+                .FirstOrDefaultAsync();
 
-            return model == null ? null : Map(model);
+            return model == null ? null : MapDailyGoal(model);
         }
 
         public async Task SaveAsync(DailyGoal goal)
         {
-            await using var db = _connectionFactory(); // ИСПРАВЛЕНО: было _dataContextFactory
+            await using var db = _connectionFactory();
 
-            // Преобразуем в модель
-            var model = Map(goal);
+            var model = MapDailyGoal(goal);
 
-            // Проверяем, существует ли уже цель на эту дату для этого пользователя
             var existingModel = await db.DailyGoals
                 .Where(g => g.UserId == model.UserId && g.Date == model.Date)
                 .FirstOrDefaultAsync();
 
             if (existingModel != null)
             {
-                // Обновляем существующую запись
                 model.Id = existingModel.Id;
                 await db.UpdateAsync(model);
                 goal.Id = model.Id;
             }
             else
             {
-                // Создаём новую запись
                 model.Id = await db.InsertWithInt64IdentityAsync(model);
                 goal.Id = model.Id;
             }
@@ -88,7 +84,7 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         // ---------- BMI (IBmiRepository) ----------
 
-        private static BmiRecordModel Map(BmiRecord r) => new()
+        private static BmiRecordModel MapBmiRecord(BmiRecord r) => new()
         {
             Id = r.Id,
             UserId = r.UserId,
@@ -100,7 +96,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             MeasuredAt = r.MeasuredAt
         };
 
-        private static BmiRecord Map(BmiRecordModel m) => new()
+        private static BmiRecord MapBmiRecord(BmiRecordModel m) => new()
         {
             Id = m.Id,
             UserId = m.UserId,
@@ -115,7 +111,7 @@ namespace FitnessBot.Infrastructure.DataAccess
         public async Task SaveAsync(BmiRecord record)
         {
             await using var db = _connectionFactory();
-            var model = Map(record);
+            var model = MapBmiRecord(record);
 
             if (model.Id == 0)
             {
@@ -138,42 +134,74 @@ namespace FitnessBot.Infrastructure.DataAccess
                 .OrderByDescending(b => b.MeasuredAt)
                 .FirstOrDefaultAsync();
 
-            return model == null ? null : Map(model);
+            return model == null ? null : MapBmiRecord(model);
         }
 
         // ---------- ErrorLog (IErrorLogRepository) ----------
 
-        private static ErrorLogModel Map(ErrorLog e) => new()
+        private static ErrorLogModel MapErrorLog(ErrorLog e) => new()
         {
             Id = e.Id,
+            UserId = e.UserId,
             Timestamp = e.Timestamp,
             Level = e.Level,
             Message = e.Message,
             StackTrace = e.StackTrace,
-            ContextJson = e.ContextJson
+            ContextJson = null
         };
 
-        private static ErrorLog Map(ErrorLogModel m) => new()
+        private static ErrorLog MapErrorLog(ErrorLogModel m) => new()
         {
             Id = m.Id,
+            UserId = m.UserId,
             Timestamp = m.Timestamp,
             Level = m.Level,
             Message = m.Message,
-            StackTrace = m.StackTrace,
-            ContextJson = m.ContextJson
+            StackTrace = m.StackTrace
         };
 
-        public async Task AddAsync(ErrorLog log)
+        async Task IErrorLogRepository.AddAsync(ErrorLog log)
         {
             await using var db = _connectionFactory();
-            var model = Map(log);
+            var model = MapErrorLog(log);
             model.Id = await db.InsertWithInt64IdentityAsync(model);
             log.Id = model.Id;
         }
 
+        async Task<List<ErrorLog>> IErrorLogRepository.GetRecentAsync(int count)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.ErrorLogs
+                .OrderByDescending(e => e.Timestamp)
+                .Take(count)
+                .ToListAsync();
+
+            return models.Select(MapErrorLog).ToList();
+        }
+
+        async Task<List<ErrorLog>> IErrorLogRepository.GetByUserIdAsync(long userId, int count)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.ErrorLogs
+                .Where(e => e.UserId == userId)
+                .OrderByDescending(e => e.Timestamp)
+                .Take(count)
+                .ToListAsync();
+
+            return models.Select(MapErrorLog).ToList();
+        }
+
+        async Task<int> IErrorLogRepository.GetCountAsync()
+        {
+            await using var db = _connectionFactory();
+            return await db.ErrorLogs.CountAsync();
+        }
+
         // ---------- ChangeLog (IChangeLogRepository) ----------
 
-        private static ChangeLogModel Map(ChangeLog c) => new()
+        private static ChangeLogModel MapChangeLog(ChangeLog c) => new()
         {
             Id = c.Id,
             AdminUserId = c.AdminUserId,
@@ -182,7 +210,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             Details = c.Details
         };
 
-        private static ChangeLog Map(ChangeLogModel m) => new()
+        private static ChangeLog MapChangeLog(ChangeLogModel m) => new()
         {
             Id = m.Id,
             AdminUserId = m.AdminUserId,
@@ -191,17 +219,48 @@ namespace FitnessBot.Infrastructure.DataAccess
             Details = m.Details
         };
 
-        public async Task AddAsync(ChangeLog log)
+        async Task IChangeLogRepository.AddAsync(ChangeLog log)
         {
             await using var db = _connectionFactory();
-            var model = Map(log);
+            var model = MapChangeLog(log);
             model.Id = await db.InsertWithInt64IdentityAsync(model);
             log.Id = model.Id;
         }
 
+        async Task<List<ChangeLog>> IChangeLogRepository.GetRecentAsync(int count)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.ChangeLogs
+                .OrderByDescending(c => c.Timestamp)
+                .Take(count)
+                .ToListAsync();
+
+            return models.Select(MapChangeLog).ToList();
+        }
+
+        async Task<List<ChangeLog>> IChangeLogRepository.GetByAdminIdAsync(long adminUserId, int count)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.ChangeLogs
+                .Where(c => c.AdminUserId == adminUserId)
+                .OrderByDescending(c => c.Timestamp)
+                .Take(count)
+                .ToListAsync();
+
+            return models.Select(MapChangeLog).ToList();
+        }
+
+        async Task<int> IChangeLogRepository.GetCountAsync()
+        {
+            await using var db = _connectionFactory();
+            return await db.ChangeLogs.CountAsync();
+        }
+
         // ---------- ContentItem (IContentItemRepository) ----------
 
-        private static ContentItemModel Map(ContentItem c) => new()
+        private static ContentItemModel MapContentItem(ContentItem c) => new()
         {
             Id = c.Id,
             UserId = c.UserId,
@@ -211,7 +270,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             ExternalUrl = c.ExternalUrl
         };
 
-        private static ContentItem Map(ContentItemModel m) => new()
+        private static ContentItem MapContentItem(ContentItemModel m) => new()
         {
             Id = m.Id,
             UserId = m.UserId,
@@ -224,7 +283,7 @@ namespace FitnessBot.Infrastructure.DataAccess
         public async Task AddAsync(ContentItem item)
         {
             await using var db = _connectionFactory();
-            var model = Map(item);
+            var model = MapContentItem(item);
             model.Id = await db.InsertWithInt64IdentityAsync(model);
             item.Id = model.Id;
         }
@@ -236,7 +295,9 @@ namespace FitnessBot.Infrastructure.DataAccess
                        .SumAsync(ci => (long?)ci.SizeBytes) ?? 0L;
         }
 
-        private static NotificationModel Map(Notification n) => new()
+        // ---------- Notification (INotificationRepository) ----------
+
+        private static NotificationModel MapNotification(Notification n) => new()
         {
             Id = n.Id,
             UserId = n.UserId,
@@ -247,7 +308,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             SentAt = n.SentAt
         };
 
-        private static Notification Map(NotificationModel m) => new()
+        private static Notification MapNotification(NotificationModel m) => new()
         {
             Id = m.Id,
             UserId = m.UserId,
@@ -261,7 +322,7 @@ namespace FitnessBot.Infrastructure.DataAccess
         public async Task<long> AddAsync(Notification notification)
         {
             await using var db = _connectionFactory();
-            var model = Map(notification);
+            var model = MapNotification(notification);
             model.Id = await db.InsertWithInt64IdentityAsync(model);
             notification.Id = model.Id;
             return model.Id;
@@ -287,7 +348,7 @@ namespace FitnessBot.Infrastructure.DataAccess
                 .OrderBy(n => n.ScheduledAt)
                 .ToListAsync();
 
-            return models.Select(Map).ToList();
+            return models.Select(MapNotification).ToList();
         }
     }
 }

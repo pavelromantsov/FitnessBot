@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using FitnessBot.Core.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot;
+using FitnessBot.Core.Abstractions;
+using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Scenarios
 {
@@ -14,6 +16,7 @@ namespace FitnessBot.Scenarios
         public ScenarioType ScenarioType => ScenarioType.Bmi;
 
         private readonly BmiService _bmiService;
+        private readonly IErrorLogRepository _errorLog;
 
         public BmiScenario(BmiService bmiService)
         {
@@ -26,7 +29,9 @@ namespace FitnessBot.Scenarios
             Message message,
             CancellationToken ct)
         {
-            var chatId = message.Chat.Id;
+            try
+            {
+                var chatId = message.Chat.Id;
 
             switch (context.CurrentStep)
             {
@@ -79,6 +84,24 @@ namespace FitnessBot.Scenarios
 
                 default:
                     return ScenarioResult.Completed;
+            }
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.AddAsync(new ErrorLog
+                {
+                    Level = "Error",
+                    Message = $"BmiScenario Error for User {context.UserId}: {ex.Message}",
+                    StackTrace = ex.StackTrace,
+                    Timestamp = DateTime.UtcNow
+                });
+
+                await bot.SendMessage(
+                    message.Chat.Id,
+                    "❌ Произошла ошибка. Попробуйте позже.",
+                    cancellationToken: ct);
+
+                return ScenarioResult.Failed;
             }
         }
     }
