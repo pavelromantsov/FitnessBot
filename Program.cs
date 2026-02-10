@@ -13,6 +13,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace FitnessBot
 {
+
     public class Program
     {
         public static async Task Main()
@@ -31,28 +32,35 @@ namespace FitnessBot
             // 2. DataContext + фабрика
             var dataContextFactory = new Func<PgDataContext>(() => new PgDataContext(connectionString));
 
-            // 3. Репозитории и сервисы
+            // 3. ИСПРАВЛЕНИЕ: Раздельные репозитории
             var userRepo = new PgUserRepository(dataContextFactory);
             var notificationRepo = new PgNotificationRepository(dataContextFactory);
-            var notificationService = new NotificationService(notificationRepo);
-
+            var dailyGoalRepo = new PgDailyGoalRepository(dataContextFactory);  // ← НОВЫЙ
+            var bmiRepo = new PgBmiRepository(dataContextFactory);               // ← НОВЫЙ
+            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);     // ← НОВЫЙ
+            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);   // ← НОВЫЙ
+            var contentRepo = new PgContentItemRepository(dataContextFactory);   // ← НОВЫЙ
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
 
-            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);
-            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);
-            var contentRepo = new PgContentItemRepository(dataContextFactory);
+            // 4. ИСПРАВЛЕНИЕ: NotificationService с правильными зависимостями
+            var notificationService = new NotificationService(
+                notificationRepo,
+                dailyGoalRepo);  // ← ИСПРАВЛЕНО
 
+            // 5. Сервисы
             var userService = new UserService(userRepo);
-            var bmiService = new BmiService(notificationRepo);
+            var bmiService = new BmiService(bmiRepo);  // ← ИСПРАВЛЕНО
             var activityService = new ActivityService(activityRepo);
             var nutritionService = new NutritionService(nutritionRepo);
-            var reportService = new ReportService(nutritionRepo, activityRepo, notificationRepo);
+            var reportService = new ReportService(nutritionRepo, activityRepo, dailyGoalRepo);
             var adminStatsRepo = new PgAdminStatsRepository(dataContextFactory);
             var adminStatsService = new AdminStatsService(adminStatsRepo);
             var chartService = new ChartService();
             var chartDataService = new ChartDataService(nutritionRepo, activityRepo);
             var chartImageService = new ChartImageService();
+
+            // Google Fit
             var httpClient = new HttpClient();
             var googleClientId = configuration["GoogleFit:ClientId"];
             var googleClientSecret = configuration["GoogleFit:ClientSecret"];
@@ -60,67 +68,67 @@ namespace FitnessBot
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
-            // сценарии
+            // 6. Сценарии
             var scenarios = new IScenario[]
             {
-                new BmiScenario(bmiService),
-                new CustomCaloriesScenario(nutritionService, userService),
-                new MealTimeSetupScenario(userService),
-                new RegistrationScenario(userService, bmiService),
-                new EditProfileScenario(userService, bmiService),
-                new SetDailyGoalScenario(notificationRepo),
-                new ActivityReminderSettingsScenario(userService),
-                new AddMealScenario(nutritionService),
-                new ConnectGoogleFitScenario(userService),
-                new EditProfileAgeScenario(userService),
-                new EditProfileCityScenario(userService),
-                new EditProfileHeightWeightScenario(bmiService)
+            new BmiScenario(bmiService),
+            new CustomCaloriesScenario(nutritionService, userService),
+            new MealTimeSetupScenario(userService),
+            new RegistrationScenario(userService, bmiService),
+            new EditProfileScenario(userService, bmiService),
+            new SetDailyGoalScenario(dailyGoalRepo),
+            new ActivityReminderSettingsScenario(userService),
+            new AddMealScenario(nutritionService),
+            new ConnectGoogleFitScenario(userService),
+            new EditProfileAgeScenario(userService),
+            new EditProfileCityScenario(userService),
+            new EditProfileHeightWeightScenario(bmiService)
             };
 
-            // 4. Telegram bot
+            // 7. Telegram bot
             var botClient = new TelegramBotClient(botToken);
 
-            // 5. HANDLERS (в порядке приоритета!)
-            // Command Handlers - ИСПРАВЛЕНО:
+            // 8. Command Handlers
             var commandHandlers = new ICommandHandler[]
             {
-                new AdminCommandsHandler(
-                    userService,
-                    adminStatsService,
-                    errorLogRepo,      // IErrorLogRepository
-                    contentRepo,       // IContentItemRepository
-                    changeLogRepo      // IChangeLogRepository
-                ),
-                new ChartsCommandsHandler(chartService, chartDataService, chartImageService),
-                new UserCommandsHandler(
-                    bmiService,
-                    nutritionRepo,
-                    activityService,
-                    reportService,
-                    contextRepository,
-                    scenarios)
+            new AdminCommandsHandler(
+                userService,
+                adminStatsService,
+                errorLogRepo,
+                contentRepo,
+                changeLogRepo
+            ),
+            new ChartsCommandsHandler(chartService, chartDataService, chartImageService),
+            new UserCommandsHandler(
+                bmiService,
+                nutritionRepo,
+                activityService,
+                reportService,
+                contextRepository,
+                scenarios)
             };
 
-            // Callback Handlers
+            // 9. Callback Handlers
             var callbackHandlers = new ICallbackHandler[]
             {
-                new AdminCallbackHandler(userService),
-                new MealCallbackHandler(userService, nutritionRepo, contextRepository),
-                new ActivityReminderCallbackHandler(userService),
-                new ChartCallbackHandler(chartService, chartDataService, chartImageService),
-                new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
-                new ProfileCallbackHandler(userService, bmiService, contextRepository),
-                new BmiCallbackHandler(contextRepository)
+            new AdminCallbackHandler(userService),
+            new MealCallbackHandler(userService, nutritionRepo, contextRepository),
+            new ActivityReminderCallbackHandler(userService),
+            new ChartCallbackHandler(chartService, chartDataService, chartImageService),
+            new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
+            new ProfileCallbackHandler(userService, bmiService, contextRepository),
+            new BmiCallbackHandler(contextRepository)
             };
 
-            // 6. UpdateHandler с новой архитектурой
+            // 10. ИСПРАВЛЕНИЕ: UpdateHandler с errorLogRepo
             var updateHandler = new UpdateHandler(
                 botClient,
                 userService,
                 contextRepository,
                 scenarios,
                 commandHandlers,
-                callbackHandlers);
+                callbackHandlers,
+                errorLogRepo);  // ← ИСПРАВЛЕНО
 
             var receiverOptions = new ReceiverOptions
             {
@@ -129,7 +137,7 @@ namespace FitnessBot
 
             var cts = new CancellationTokenSource();
 
-            // 7. Background Tasks - ДОБАВЛЕН using
+            // 11. Background Tasks
             using var backgroundRunner = new BackgroundTaskRunner();
 
             backgroundRunner.AddTask(new MealReminderBackgroundTask(
@@ -141,7 +149,7 @@ namespace FitnessBot
                 userService,
                 activityRepo,
                 nutritionRepo,
-                notificationRepo,
+                dailyGoalRepo,
                 notificationService));
 
             backgroundRunner.AddTask(new NotificationSenderBackgroundTask(
@@ -157,10 +165,10 @@ namespace FitnessBot
             backgroundRunner.AddTask(new ActivityReminderBackgroundTask(
                 userService,
                 activityRepo,
-                notificationRepo,
+                dailyGoalRepo,
                 notificationService));
 
-            // Обработка Ctrl+C для graceful shutdown
+            // 12. Graceful shutdown
             Console.CancelKeyPress += (sender, e) =>
             {
                 e.Cancel = true;
@@ -170,10 +178,8 @@ namespace FitnessBot
 
             try
             {
-                // запускаем фоновые задачи
                 backgroundRunner.StartTasks(cts.Token);
 
-                // запускаем бота
                 botClient.StartReceiving(
                     updateHandler,
                     receiverOptions,
@@ -182,7 +188,6 @@ namespace FitnessBot
                 var me = await botClient.GetMe();
                 Console.WriteLine($"Бот {me.FirstName} запущен. Нажмите Ctrl+C для остановки.");
 
-                // Ждём сигнала остановки
                 await Task.Delay(Timeout.Infinite, cts.Token);
             }
             catch (OperationCanceledException)
@@ -191,7 +196,6 @@ namespace FitnessBot
             }
             finally
             {
-                // корректно останавливаем фоновые задачи
                 await backgroundRunner.StopTasks(CancellationToken.None);
                 Console.WriteLine("Бот остановлен.");
             }

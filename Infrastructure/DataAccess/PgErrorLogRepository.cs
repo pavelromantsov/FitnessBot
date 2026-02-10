@@ -12,74 +12,68 @@ namespace FitnessBot.Infrastructure.DataAccess
 {
     public class PgErrorLogRepository : IErrorLogRepository
     {
-        private readonly Func<PgDataContext> _dataContextFactory;
+        private readonly Func<PgDataContext> _connectionFactory;
 
-        public PgErrorLogRepository(Func<PgDataContext> dataContextFactory)
+        public PgErrorLogRepository(Func<PgDataContext> connectionFactory)
         {
-            _dataContextFactory = dataContextFactory;
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         }
 
-        public async Task AddAsync(ErrorLog errorLog)
+        private static ErrorLogModel MapToModel(ErrorLog e) => new()
         {
-            await using var db = _dataContextFactory();
+            Id = e.Id,
+            UserId = e.UserId,
+            Timestamp = e.Timestamp,
+            Level = e.Level,
+            Message = e.Message,
+            StackTrace = e.StackTrace,
+            ContextJson = null
+        };
 
-            var model = new ErrorLogModel
-            {
-                UserId = errorLog.UserId,
-                Timestamp = errorLog.Timestamp,
-                Level = errorLog.Level,
-                Message = errorLog.Message,
-                StackTrace = errorLog.StackTrace,
-                ContextJson = null
-            };
+        private static ErrorLog MapToEntity(ErrorLogModel m) => new()
+        {
+            Id = m.Id,
+            UserId = m.UserId,
+            Timestamp = m.Timestamp,
+            Level = m.Level,
+            Message = m.Message,
+            StackTrace = m.StackTrace
+        };
 
-            await db.InsertAsync(model);
+        public async Task AddAsync(ErrorLog log)
+        {
+            await using var db = _connectionFactory();
+            var model = MapToModel(log);
+            model.Id = await db.InsertWithInt64IdentityAsync(model);
+            log.Id = model.Id;
         }
 
         public async Task<List<ErrorLog>> GetRecentAsync(int count)
         {
-            await using var db = _dataContextFactory();
-
+            await using var db = _connectionFactory();
             var models = await db.ErrorLogs
                 .OrderByDescending(e => e.Timestamp)
                 .Take(count)
                 .ToListAsync();
 
-            return models.Select(m => new ErrorLog
-            {
-                Id = m.Id,
-                UserId = m.UserId,
-                Timestamp = m.Timestamp,
-                Level = m.Level,
-                Message = m.Message,
-                StackTrace = m.StackTrace
-            }).ToList();
+            return models.Select(MapToEntity).ToList();
         }
 
         public async Task<List<ErrorLog>> GetByUserIdAsync(long userId, int count)
         {
-            await using var db = _dataContextFactory();
-
+            await using var db = _connectionFactory();
             var models = await db.ErrorLogs
                 .Where(e => e.UserId == userId)
                 .OrderByDescending(e => e.Timestamp)
                 .Take(count)
                 .ToListAsync();
 
-            return models.Select(m => new ErrorLog
-            {
-                Id = m.Id,
-                UserId = m.UserId,
-                Timestamp = m.Timestamp,
-                Level = m.Level,
-                Message = m.Message,
-                StackTrace = m.StackTrace
-            }).ToList();
+            return models.Select(MapToEntity).ToList();
         }
 
         public async Task<int> GetCountAsync()
         {
-            await using var db = _dataContextFactory();
+            await using var db = _connectionFactory();
             return await db.ErrorLogs.CountAsync();
         }
     }

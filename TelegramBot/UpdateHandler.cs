@@ -16,8 +16,8 @@ namespace FitnessBot.TelegramBot
         private readonly UserService _userService;
         private readonly IScenarioContextRepository _contextRepository;
         private readonly System.Collections.Generic.List<IScenario> _scenarios;
-        private readonly IErrorLogRepository _errorLog;
-        
+        private readonly IErrorLogRepository _errorLogRepo;
+
         // Handlers
         private readonly ICommandHandler[] _commandHandlers;
         private readonly ICallbackHandler[] _callbackHandlers;
@@ -33,7 +33,9 @@ namespace FitnessBot.TelegramBot
             IScenarioContextRepository contextRepository,
             System.Collections.Generic.IEnumerable<IScenario> scenarios,
             ICommandHandler[] commandHandlers,
-            ICallbackHandler[] callbackHandlers)
+            ICallbackHandler[] callbackHandlers,
+            IErrorLogRepository errorLogRepo
+            )
         {
             _botClient = botClient;
             _userService = userService;
@@ -41,6 +43,7 @@ namespace FitnessBot.TelegramBot
             _scenarios = scenarios.ToList();
             _commandHandlers = commandHandlers;
             _callbackHandlers = callbackHandlers;
+            _errorLogRepo = errorLogRepo;
         }
 
         public async Task HandleUpdateAsync(
@@ -64,7 +67,7 @@ namespace FitnessBot.TelegramBot
             {
                 Console.WriteLine($"❌ Ошибка обработки обновления: {ex}");
                 
-                await _errorLog.AddAsync(new ErrorLog
+                await _errorLogRepo.AddAsync(new ErrorLog
                 {
                     Level = "Error",
                     Message = $"Update {update.Id}: {ex.Message}",
