@@ -36,22 +36,20 @@ namespace FitnessBot.Scenarios
 
             switch (context.CurrentStep)
             {
-                // Шаг 0 — выбор режима
                 case 0:
                     {
                         var keyboard = new ReplyKeyboardMarkup(new[]
                         {
-                        new[]
-                        {
-                            new KeyboardButton("Готовое блюдо (БЖУ на порцию)"),
-                            new KeyboardButton("По 100 г продукта")
-                        },
-                        new[]
-                        {
-                            new KeyboardButton("Блюдо из шаблона"),
-                            new KeyboardButton("Отмена")
-                        }
-                    })
+        new[]
+        {
+            new KeyboardButton("Готовое блюдо (БЖУ на порцию)"),
+            new KeyboardButton("По 100 г продукта")
+        },
+        new[]
+        {
+            new KeyboardButton("Отмена")
+        }
+    })
                         {
                             ResizeKeyboard = true
                         };
@@ -60,8 +58,7 @@ namespace FitnessBot.Scenarios
                             chatId,
                             "Что вы хотите добавить?\n" +
                             "1) Готовое блюдо с известными калориями и БЖУ.\n" +
-                            "2) Продукт по значению на 100 г.\n" +
-                            "3) Блюдо из шаблона (пока заглушка).",
+                            "2) Продукт по значению на 100 г.",
                             replyMarkup: keyboard,
                             cancellationToken: ct);
 
@@ -81,15 +78,6 @@ namespace FitnessBot.Scenarios
                         else if (mode.StartsWith("по 100"))
                         {
                             context.Data["mode"] = "by100g";
-                        }
-                        else if (mode.StartsWith("блюдо из шаблона"))
-                        {
-                            context.Data["mode"] = "template";
-                            await bot.SendMessage(
-                                chatId,
-                                "Работа с шаблонами пока не реализована.",
-                                cancellationToken: ct);
-                            return ScenarioResult.Completed;
                         }
                         else if (mode.StartsWith("отмена") || mode.Equals("cancel", StringComparison.OrdinalIgnoreCase))
                         {
@@ -111,8 +99,8 @@ namespace FitnessBot.Scenarios
                             "Выберите тип приёма пищи:",
                             replyMarkup: new ReplyKeyboardMarkup(new[]
                             {
-                            new[] { new KeyboardButton("Завтрак"), new KeyboardButton("Обед") },
-                            new[] { new KeyboardButton("Ужин"), new KeyboardButton("Перекус") }
+                                new[] { new KeyboardButton("Завтрак"), new KeyboardButton("Обед") },
+                                new[] { new KeyboardButton("Ужин"), new KeyboardButton("Перекус") }
                             })
                             {
                                 ResizeKeyboard = true

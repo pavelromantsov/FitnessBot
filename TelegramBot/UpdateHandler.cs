@@ -1,6 +1,7 @@
 using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
+using FitnessBot.Core.Services.LogMeal;
 using FitnessBot.Scenarios;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -17,10 +18,12 @@ namespace FitnessBot.TelegramBot
         private readonly IScenarioContextRepository _contextRepository;
         private readonly System.Collections.Generic.List<IScenario> _scenarios;
         private readonly IErrorLogRepository _errorLogRepo;
+        private readonly LogMealClient _logMealClient;
 
         // Handlers
         private readonly ICommandHandler[] _commandHandlers;
         private readonly ICallbackHandler[] _callbackHandlers;
+        private readonly IEnumerable<IPhotoHandler> _photoHandlers;
 
         public delegate void MessageEventHandler(string message);
         public event MessageEventHandler? OnHandleUpdateStarted;
@@ -34,7 +37,9 @@ namespace FitnessBot.TelegramBot
             System.Collections.Generic.IEnumerable<IScenario> scenarios,
             ICommandHandler[] commandHandlers,
             ICallbackHandler[] callbackHandlers,
-            IErrorLogRepository errorLogRepo
+            IErrorLogRepository errorLogRepo,
+            LogMealClient logMealClient,
+            IEnumerable<IPhotoHandler> photoHandlers
             )
         {
             _botClient = botClient;
@@ -44,6 +49,8 @@ namespace FitnessBot.TelegramBot
             _commandHandlers = commandHandlers;
             _callbackHandlers = callbackHandlers;
             _errorLogRepo = errorLogRepo;
+            _logMealClient = logMealClient;
+            _photoHandlers = photoHandlers.ToList();
         }
 
         public async Task HandleUpdateAsync(
@@ -117,12 +124,12 @@ namespace FitnessBot.TelegramBot
 
         private async Task OnMessage(Update update, Message message, CancellationToken ct)
         {
-            if (message.Text is null)
+            if (message.From == null)
                 return;
 
             var chatId = message.Chat.Id;
-            var telegramId = message.From?.Id ?? 0;
-            var firstName = message.From?.FirstName ?? "Unknown";
+            var telegramId = message.From.Id;
+            var firstName = message.From.FirstName ?? "Unknown";
 
             if (telegramId == 0)
             {
@@ -133,7 +140,7 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Get or register user
+            // Получаем/регистрируем пользователя (как у тебя было)
             var user = await _userService.GetByTelegramIdAsync(telegramId);
             if (user == null)
             {
@@ -157,17 +164,37 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Update user info
             user = await _userService.RegisterOrUpdateAsync(
                 telegramId,
                 firstName,
                 user.Age,
                 user.City);
 
-            // Check for active scenario
+            // Создаём UpdateContext
+            var updateContext = new UpdateContext(
+                _botClient,
+                user,
+                chatId,
+                message,
+                callbackQuery: null,
+                cancellationToken: ct);
+
+            // Фото → IPhotoHandler
+            if (message.Photo is { Length: > 0 })
+            {
+                foreach (var photoHandler in _photoHandlers)
+                {
+                    if (await photoHandler.HandleAsync(updateContext))
+                        return;
+                }
+            }
+
+            // дальше твоя существующая логика сценариев/команд
+            if (message.Text is null)
+                return;
+
             var context = await _contextRepository.GetContext(user.Id, ct);
 
-            // Handle /cancel
             if (message.Text.Equals("/cancel", StringComparison.OrdinalIgnoreCase) && context != null)
             {
                 await _contextRepository.ResetContext(user.Id, ct);
@@ -178,28 +205,24 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Continue active scenario
             if (context != null)
             {
                 await ProcessScenario(context, message, ct);
                 return;
             }
 
-            // Parse command (support both /command and button text)
             var messageText = message.Text;
             string command;
             string[] args;
 
             if (messageText.StartsWith('/'))
             {
-                // Это команда с /
                 var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 command = parts.FirstOrDefault() ?? string.Empty;
                 args = parts.Skip(1).ToArray();
             }
             else
             {
-                // Это текст кнопки или обычный текст - передаём как есть
                 command = messageText;
                 args = Array.Empty<string>();
             }
@@ -221,7 +244,8 @@ namespace FitnessBot.TelegramBot
                 user,
                 chatId,
                 message,
-                null);
+                null,
+                ct);
 
             // Try each handler in order (priority matters!)
             foreach (var handler in _commandHandlers)
@@ -289,7 +313,8 @@ namespace FitnessBot.TelegramBot
                 user,
                 chatId,
                 null,
-                callbackQuery);
+                callbackQuery,
+                ct);
 
             // Try each handler in order
             foreach (var handler in _callbackHandlers)

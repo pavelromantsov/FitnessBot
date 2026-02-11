@@ -1,6 +1,7 @@
 ﻿using FitnessBot.BackgroundTasks;
 using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Services;
+using FitnessBot.Core.Services.LogMeal;
 using FitnessBot.Infrastructure;
 using FitnessBot.Infrastructure.DataAccess;
 using FitnessBot.Scenarios;
@@ -28,29 +29,31 @@ namespace FitnessBot
 
             string connectionString = configuration.GetConnectionString("FitnessBotDb")
                 ?? throw new InvalidOperationException("Connection string not found");
+            
+            var fileBaseUrl = $"https://api.telegram.org/file/bot{botToken}/";
 
             // 2. DataContext + фабрика
             var dataContextFactory = new Func<PgDataContext>(() => new PgDataContext(connectionString));
 
-            // 3. ИСПРАВЛЕНИЕ: Раздельные репозитории
+            // 3. Репозитории
             var userRepo = new PgUserRepository(dataContextFactory);
             var notificationRepo = new PgNotificationRepository(dataContextFactory);
-            var dailyGoalRepo = new PgDailyGoalRepository(dataContextFactory);  // ← НОВЫЙ
-            var bmiRepo = new PgBmiRepository(dataContextFactory);               // ← НОВЫЙ
-            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);     // ← НОВЫЙ
-            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);   // ← НОВЫЙ
-            var contentRepo = new PgContentItemRepository(dataContextFactory);   // ← НОВЫЙ
+            var dailyGoalRepo = new PgDailyGoalRepository(dataContextFactory);  
+            var bmiRepo = new PgBmiRepository(dataContextFactory);               
+            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);     
+            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);   
+            var contentRepo = new PgContentItemRepository(dataContextFactory);  
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
 
-            // 4. ИСПРАВЛЕНИЕ: NotificationService с правильными зависимостями
+            // 4. NotificationService
             var notificationService = new NotificationService(
                 notificationRepo,
-                dailyGoalRepo);  // ← ИСПРАВЛЕНО
+                dailyGoalRepo); 
 
             // 5. Сервисы
             var userService = new UserService(userRepo);
-            var bmiService = new BmiService(bmiRepo);  // ← ИСПРАВЛЕНО
+            var bmiService = new BmiService(bmiRepo);  
             var activityService = new ActivityService(activityRepo);
             var nutritionService = new NutritionService(nutritionRepo);
             var reportService = new ReportService(nutritionRepo, activityRepo, dailyGoalRepo);
@@ -65,6 +68,11 @@ namespace FitnessBot
             var googleClientId = configuration["GoogleFit:ClientId"];
             var googleClientSecret = configuration["GoogleFit:ClientSecret"];
             var googleFitClient = new GoogleFitClient(httpClient, googleClientId, googleClientSecret);
+
+            // NutriVision
+            var logMealToken = configuration["LogMeal:ApiToken"]
+                ?? throw new InvalidOperationException("LogMeal:ApiToken not found");
+            var logMealClient = new LogMealClient(httpClient, logMealToken);
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
@@ -119,8 +127,13 @@ namespace FitnessBot
             new ProfileCallbackHandler(userService, bmiService, contextRepository),
             new BmiCallbackHandler(contextRepository)
             };
+            
+            var photoHandlers = new IPhotoHandler[]
+            {
+                new FoodPhotoHandler(logMealClient, nutritionService, userService,fileBaseUrl)
+            };
 
-            // 10. ИСПРАВЛЕНИЕ: UpdateHandler с errorLogRepo
+            // 10. UpdateHandler 
             var updateHandler = new UpdateHandler(
                 botClient,
                 userService,
@@ -128,7 +141,9 @@ namespace FitnessBot
                 scenarios,
                 commandHandlers,
                 callbackHandlers,
-                errorLogRepo);  // ← ИСПРАВЛЕНО
+                errorLogRepo,
+                logMealClient,
+                photoHandlers); 
 
             var receiverOptions = new ReceiverOptions
             {
