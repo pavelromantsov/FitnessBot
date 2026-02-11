@@ -1,10 +1,7 @@
-using System;
-using System.Threading.Tasks;
 using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using FitnessBot.Scenarios;
-using FitnessBot.TelegramBot.DTO;
 using Telegram.Bot;
 
 namespace FitnessBot.TelegramBot.Handlers

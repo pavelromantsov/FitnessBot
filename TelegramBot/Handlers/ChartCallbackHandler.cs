@@ -1,6 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using FitnessBot.Core.Services;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -28,7 +25,8 @@ namespace FitnessBot.TelegramBot.Handlers
             if (!data.StartsWith("chart_", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            await context.Bot.AnswerCallbackQuery(context.CallbackQuery!.Id, cancellationToken: default);
+            await context.Bot.AnswerCallbackQuery(context.CallbackQuery!.Id, 
+                cancellationToken: default);
 
             switch (data)
             {
@@ -66,7 +64,8 @@ namespace FitnessBot.TelegramBot.Handlers
                     "⏳ Генерирую график калорий...",
                     cancellationToken: default);
 
-                var (caloriesIn, caloriesOut) = await _chartDataService.GetCaloriesDataAsync(ctx.User.Id, days);
+                var (caloriesIn, caloriesOut) = await _chartDataService.GetCaloriesDataAsync(
+                    ctx.User.Id, days);
 
                 if (!caloriesIn.Any() && !caloriesOut.Any())
                 {
@@ -164,7 +163,8 @@ namespace FitnessBot.TelegramBot.Handlers
 
                 var macrosData = await _chartDataService.GetMacrosDataAsync(ctx.User.Id, days);
 
-                if (!macrosData.Any() || macrosData.Values.All(m => m.protein == 0 && m.fat == 0 && m.carbs == 0))
+                if (!macrosData.Any() || macrosData.Values.All(m => m.protein == 0 &&
+                m.fat == 0 && m.carbs == 0))
                 {
                     await ctx.Bot.SendMessage(
                         ctx.ChatId,

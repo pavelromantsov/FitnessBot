@@ -176,8 +176,10 @@ namespace FitnessBot.TelegramBot.Handlers
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("✅ Включить все", "activity_reminders_all_on"),
-                    InlineKeyboardButton.WithCallbackData("❌ Отключить все", "activity_reminders_all_off")
+                    InlineKeyboardButton.WithCallbackData("✅ Включить все", 
+                    "activity_reminders_all_on"),
+                    InlineKeyboardButton.WithCallbackData("❌ Отключить все", 
+                    "activity_reminders_all_off")
                 },
                 new[]
                 {
@@ -214,7 +216,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 "🍽 Обеденные (13:00) - напоминание пройтись\n" +
                 "🧘‍♂️ Дневные (16:00) - разминка и растяжка\n" +
                 "🌆 Вечерние (19:00) - проверка выполнения целей\n\n" +
-                $"Глобальный статус: {(user.ActivityRemindersEnabled ? "включены ✅" : "отключены ❌")}",
+                $"Глобальный статус: {(user.ActivityRemindersEnabled ? "включены ✅" : 
+                "отключены ❌")}",
                 replyMarkup: keyboard,
                 cancellationToken: default);
         }

@@ -165,7 +165,6 @@ namespace FitnessBot.Infrastructure.DataAccess
             var model = await db.Users
                 .FirstOrDefaultAsync(u => u.TelegramId == telegramId, ct);
 
-            // если у вас есть маппинг Model → Entity, нужно его использовать:
             return model == null ? null : Map(model);
         }
         public async Task<IReadOnlyList<User>> FindByNameAsync(string namePart)

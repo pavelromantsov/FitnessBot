@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
-using FitnessBot.Core.Services.LogMeal;
+﻿using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
+using FitnessBot.Core.Services.LogMeal;
 using Telegram.Bot;
 
 namespace FitnessBot.TelegramBot.Handlers
@@ -67,7 +62,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 Console.WriteLine($"LogMeal segmentation error: {ex}");
                 await bot.SendMessage(
                     chatId,
-                    "Не удалось распознать блюдо по фото 😔 Попробуйте позже или введите калории вручную.",
+                    "Не удалось распознать блюдо по фото 😔 " +
+                    "Попробуйте позже или введите калории вручную.",
                     cancellationToken: ct);
                 return true;
             }
@@ -130,7 +126,8 @@ namespace FitnessBot.TelegramBot.Handlers
             {
                 await bot.SendMessage(
                     chatId,
-                    "Не удалось корректно определить калорийность блюда. Попробуйте ввести данные вручную.",
+                    "Не удалось корректно определить калорийность блюда. " +
+                    "Попробуйте ввести данные вручную.",
                     cancellationToken: ct);
                 return true;
             }

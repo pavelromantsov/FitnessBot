@@ -29,33 +29,38 @@ namespace FitnessBot.Scenarios
             switch (context.CurrentStep)
             {
                 case 0:
-                    await bot.SendMessage(message.Chat.Id, "Укажи, пожалуйста, свой возраст (полных лет):", cancellationToken: ct);
+                    await bot.SendMessage(message.Chat.Id, "Укажи, пожалуйста, " +
+                        "свой возраст (полных лет):", cancellationToken: ct);
                     context.CurrentStep = 1;
                     return ScenarioResult.InProgress;
 
                 case 1:
                     if (!int.TryParse(text, out var age) || age < 10 || age > 100)
                     {
-                        await bot.SendMessage(message.Chat.Id, "Введи возраст числом, например 30:", cancellationToken: ct);
+                        await bot.SendMessage(message.Chat.Id, "Введи возраст числом, " +
+                            "например 30:", cancellationToken: ct);
                         return ScenarioResult.InProgress;
                     }
 
-                    context.Data["age"] = age.ToString(CultureInfo.InvariantCulture);   // ← ВОТ ТУТ
+                    context.Data["age"] = age.ToString(CultureInfo.InvariantCulture);  
 
-                    await bot.SendMessage(message.Chat.Id, "Теперь введи свой рост в сантиметрах, например 175:", cancellationToken: ct);
+                    await bot.SendMessage(message.Chat.Id, "Теперь введи свой рост в " +
+                        "сантиметрах, например 175:", cancellationToken: ct);
                     context.CurrentStep = 2;
                     return ScenarioResult.InProgress;
 
                 case 2:
                     if (!double.TryParse(text, out var height) || height < 100 || height > 250)
                     {
-                        await bot.SendMessage(message.Chat.Id, "Рост введи числом в см, например 175:", cancellationToken: ct);
+                        await bot.SendMessage(message.Chat.Id, "Рост введи числом в см, " +
+                            "например 175:", cancellationToken: ct);
                         return ScenarioResult.InProgress;
                     }
 
-                    context.Data["height"] = height.ToString("F1", CultureInfo.InvariantCulture);  // ← И ВОТ ТУТ
+                    context.Data["height"] = height.ToString("F1", CultureInfo.InvariantCulture);  
 
-                    await bot.SendMessage(message.Chat.Id, "И последний шаг: введи свой вес в килограммах, например 80:", cancellationToken: ct);
+                    await bot.SendMessage(message.Chat.Id, "И последний шаг: " +
+                        "введи свой вес в килограммах, например 80:", cancellationToken: ct);
                     context.CurrentStep = 3;
                     return ScenarioResult.InProgress;
 
@@ -63,13 +68,16 @@ namespace FitnessBot.Scenarios
                 case 3:
                     if (!double.TryParse(text, out var weight) || weight < 30 || weight > 300)
                     {
-                        await bot.SendMessage(message.Chat.Id, "Вес введи числом в кг, например 80:", cancellationToken: ct);
+                        await bot.SendMessage(message.Chat.Id, "Вес введи числом в кг, " +
+                            "например 80:",
+                            cancellationToken: ct);
                         return ScenarioResult.InProgress;
                     }
 
                     context.Data["weight"] = weight.ToString("F1", CultureInfo.InvariantCulture);
 
-                    await bot.SendMessage(message.Chat.Id, "Укажи, пожалуйста, город (можно просто текстом):", cancellationToken: ct);
+                    await bot.SendMessage(message.Chat.Id, "Укажи, пожалуйста, " +
+                        "город (можно просто текстом):", cancellationToken: ct);
                     context.CurrentStep = 4;
                     return ScenarioResult.InProgress;
 

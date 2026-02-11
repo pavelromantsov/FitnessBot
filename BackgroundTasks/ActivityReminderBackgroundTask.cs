@@ -279,7 +279,7 @@ namespace FitnessBot.BackgroundTasks
 
                 if (stepsRemaining <= 2000 && stepsRemaining > 0)
                 {
-                    var walkMinutes = (int)(stepsRemaining / 100); // примерно 100 шагов в минуту
+                    var walkMinutes = (int)(stepsRemaining / 100);
                     message += $"💡 Совет: Вечерняя прогулка {walkMinutes}-{walkMinutes + 5} минут закроет цель!\n\n";
                 }
                 else if (stepsRemaining > 2000)

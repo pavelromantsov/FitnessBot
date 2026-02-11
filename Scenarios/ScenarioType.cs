@@ -16,7 +16,6 @@
         ConnectGoogleFit = 11,
         EditProfileAge = 12,
         EditProfileCity = 13,
-        EditProfileHeightWeight
-
+        EditProfileHeightWeight = 14
     }
 }

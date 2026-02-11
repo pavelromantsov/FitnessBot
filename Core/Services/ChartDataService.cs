@@ -63,8 +63,6 @@ namespace FitnessBot.Core.Services
             var to = today.AddDays(1);
 
             var activitiesList = await _activityRepository.GetByUserAndPeriodAsync(userId, from, to);
-            // заменить на:
-            // var activitiesList = await activityService.GetMergedForPeriodAsync(userId, from, to);
 
             var stepsByDate = activitiesList
                 .GroupBy(a => a.Date.Date)

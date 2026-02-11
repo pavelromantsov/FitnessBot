@@ -15,7 +15,6 @@ namespace FitnessBot.Infrastructure.DataAccess
             _connectionFactory = connectionFactory;
         }
 
-        // маппинг Activity <-> ActivityModel
         private static ActivityModel Map(Activity a) => new()
         {
             Id = a.Id,
@@ -46,7 +45,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             activity.Id = model.Id;
         }
 
-        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, DateTime from, DateTime to)
+        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, 
+                DateTime from, DateTime to)
         {
             await using var db = _connectionFactory();
             var models = await db.Activities
@@ -59,7 +59,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             return models.Select(Map).ToList();
         }
 
-        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId, DateTime dateUtc, string source, CancellationToken ct)
+        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId, 
+                DateTime dateUtc, string source, CancellationToken ct)
         {
             var day = dateUtc.Date;
 

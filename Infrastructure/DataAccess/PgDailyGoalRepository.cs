@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
 using FitnessBot.Core.Entities;
-using LinqToDB.Async;
 using LinqToDB;
+using LinqToDB.Async;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
@@ -17,7 +12,8 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         public PgDailyGoalRepository(Func<PgDataContext> connectionFactory)
         {
-            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+            _connectionFactory = connectionFactory ?? 
+                throw new ArgumentNullException(nameof(connectionFactory));
         }
 
         private static DailyGoalModel MapToModel(DailyGoal g) => new()

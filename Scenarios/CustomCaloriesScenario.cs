@@ -95,7 +95,8 @@ namespace FitnessBot.Scenarios
                         }
 
                         // пользователь не хочет БЖУ — сохраняем только калории
-                        return await SaveMealAndFinish(bot, context, message, ct, protein: 0, fat: 0, carbs: 0);
+                        return await SaveMealAndFinish(bot, context, message, ct, 
+                            protein: 0, fat: 0, carbs: 0);
                     }
 
                 // Шаг 3 — белки
@@ -168,10 +169,13 @@ namespace FitnessBot.Scenarios
                             return ScenarioResult.InProgress;
                         }
 
-                        var protein = context.Data.TryGetValue("protein", out var pObj) && pObj is double pVal ? pVal : 0;
-                        var fat = context.Data.TryGetValue("fat", out var fObj) && fObj is double fVal ? fVal : 0;
+                        var protein = context.Data.TryGetValue("protein", out var pObj) && 
+                            pObj is double pVal ? pVal : 0;
+                        var fat = context.Data.TryGetValue("fat", out var fObj) && 
+                            fObj is double fVal ? fVal : 0;
 
-                        return await SaveMealAndFinish(bot, context, message, ct, protein, fat, carbs);
+                        return await SaveMealAndFinish(bot, context, message, ct, 
+                            protein, fat, carbs);
                     }
 
                 default:

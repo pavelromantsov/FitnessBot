@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
+﻿using FitnessBot.Core.Services;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace FitnessBot.Scenarios
 {
@@ -67,22 +62,20 @@ namespace FitnessBot.Scenarios
                         if (!text.Equals("нет", StringComparison.OrdinalIgnoreCase))
                             refreshToken = text;
 
-                        var expiresAtUtc = DateTime.UtcNow.AddHours(1); // примерное время жизни access_token
+                        var expiresAtUtc = DateTime.UtcNow.AddHours(1); 
 
                         var user = await _userService.GetByIdAsync(context.UserId);
                         if (user == null)
                         {
-                            await bot.SendMessage(chatId, "Пользователь не найден.", cancellationToken: ct);
+                            await bot.SendMessage(chatId, "Пользователь не найден.", 
+                                cancellationToken: ct);
                             return ScenarioResult.Completed;
                         }
 
                         user.GoogleFitAccessToken = accessToken;
                         user.GoogleFitRefreshToken = refreshToken;
                         user.GoogleFitTokenExpiresAt = expiresAtUtc;
-                        
-                        // после отладки удалить
-                        Console.WriteLine($"[ConnectGoogleFitScenario] Saving tokens for user {user.Id}: access='{accessToken[..Math.Min(10, accessToken.Length)]}...'");
-
+                                                
                         await _userService.SaveAsync(user);
 
                         await bot.SendMessage(

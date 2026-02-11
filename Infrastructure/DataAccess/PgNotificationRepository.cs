@@ -1,5 +1,4 @@
-﻿using FitnessBot.Core.Abstractions;
-using FitnessBot.Core.DataAccess.Models;
+﻿using FitnessBot.Core.DataAccess.Models;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using LinqToDB;
@@ -13,7 +12,8 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         public PgNotificationRepository(Func<PgDataContext> connectionFactory)
         {
-            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+            _connectionFactory = connectionFactory ?? 
+                throw new ArgumentNullException(nameof(connectionFactory));
         }
 
         private static NotificationModel MapToModel(Notification n) => new()

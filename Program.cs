@@ -1,5 +1,4 @@
 ﻿using FitnessBot.BackgroundTasks;
-using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Services;
 using FitnessBot.Core.Services.LogMeal;
 using FitnessBot.Infrastructure;
@@ -33,7 +32,8 @@ namespace FitnessBot
             var fileBaseUrl = $"https://api.telegram.org/file/bot{botToken}/";
 
             // 2. DataContext + фабрика
-            var dataContextFactory = new Func<PgDataContext>(() => new PgDataContext(connectionString));
+            var dataContextFactory = new Func<PgDataContext>(() => 
+            new PgDataContext(connectionString));
 
             // 3. Репозитории
             var userRepo = new PgUserRepository(dataContextFactory);
@@ -99,21 +99,26 @@ namespace FitnessBot
             // 8. Command Handlers
             var commandHandlers = new ICommandHandler[]
             {
-            new AdminCommandsHandler(
-                userService,
-                adminStatsService,
-                errorLogRepo,
-                contentRepo,
-                changeLogRepo
-            ),
-            new ChartsCommandsHandler(chartService, chartDataService, chartImageService),
-            new UserCommandsHandler(
-                bmiService,
-                nutritionRepo,
-                activityService,
-                reportService,
-                contextRepository,
-                scenarios)
+                new ChartsCommandsHandler(
+                    chartService, 
+                    chartDataService, 
+                    chartImageService
+                    ),
+                new UserCommandsHandler(
+                    bmiService,
+                    nutritionRepo,
+                    activityService,
+                    reportService,
+                    contextRepository,
+                    scenarios
+                    ),            
+                new AdminCommandsHandler(
+                    userService,
+                    adminStatsService,
+                    errorLogRepo,
+                    contentRepo,
+                    changeLogRepo
+                    ),
             };
 
             // 9. Callback Handlers

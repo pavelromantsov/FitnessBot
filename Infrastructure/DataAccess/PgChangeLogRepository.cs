@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
 using FitnessBot.Core.Entities;
 using LinqToDB;
@@ -16,7 +12,8 @@ namespace FitnessBot.Infrastructure.DataAccess
 
         public PgChangeLogRepository(Func<PgDataContext> connectionFactory)
         {
-            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+            _connectionFactory = connectionFactory ?? 
+                throw new ArgumentNullException(nameof(connectionFactory));
         }
 
         private static ChangeLogModel MapToModel(ChangeLog c) => new()

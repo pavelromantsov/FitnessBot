@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Services;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FitnessBot.TelegramBot.Handlers
 {
@@ -163,7 +158,8 @@ namespace FitnessBot.TelegramBot.Handlers
             buttons.Add(new[]
             {
                 InlineKeyboardButton.WithCallbackData("◀️", $"cal_prev:{year}:{month}"),
-                InlineKeyboardButton.WithCallbackData($"{GetMonthName(month)} {year}", "cal_ignore"),
+                InlineKeyboardButton.WithCallbackData($"{GetMonthName(month)} {year}", 
+                "cal_ignore"),
                 InlineKeyboardButton.WithCallbackData("▶️", $"cal_next:{year}:{month}")
             });
 
@@ -192,7 +188,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 var isFuture = date > DateTime.UtcNow.Date;
 
                 string buttonText = isToday ? $"[{day}]" : day.ToString();
-                string callbackData = isFuture ? "cal_ignore" : $"report_date:{year}:{month}:{day}";
+                string callbackData = isFuture ? "cal_ignore" : 
+                    $"report_date:{year}:{month}:{day}";
 
                 currentWeek.Add(InlineKeyboardButton.WithCallbackData(buttonText, callbackData));
 

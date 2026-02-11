@@ -24,7 +24,8 @@
 
                 var memoryStream = new MemoryStream();
                 await response.Content.CopyToAsync(memoryStream);
-                memoryStream.Position = 0; // Сбрасываем позицию на начало
+                // Сбрасываем позицию на начало
+                memoryStream.Position = 0; 
 
                 return memoryStream;
             }

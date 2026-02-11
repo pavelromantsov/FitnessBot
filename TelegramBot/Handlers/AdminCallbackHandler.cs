@@ -1,8 +1,5 @@
-using System;
-using System.Threading.Tasks;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using FitnessBot.TelegramBot.DTO;
 using Telegram.Bot;
 
 namespace FitnessBot.TelegramBot.Handlers
@@ -21,7 +18,6 @@ namespace FitnessBot.TelegramBot.Handlers
             if (!data.StartsWith("make_admin", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            // Check if caller is admin
             if (context.User.Role != UserRole.Admin)
             {
                 await context.Bot.AnswerCallbackQuery(
@@ -31,7 +27,6 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            // Parse: make_admin|telegramId
             var parts = data.Split('|', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 2 || !long.TryParse(parts[1], out var targetTelegramId))
             {

@@ -1,10 +1,6 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using FitnessBot.TelegramBot.DTO;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -273,7 +269,8 @@ namespace FitnessBot.TelegramBot.Handlers
 
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) назначен администратором.",
+                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) " +
+                $"назначен администратором.",
                 cancellationToken: default);
         }
 
@@ -319,7 +316,8 @@ namespace FitnessBot.TelegramBot.Handlers
 
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
-                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) теперь обычный пользователь.",
+                $"Пользователь {targetUser.Name} (TelegramId={targetTelegramId}) " +
+                $"теперь обычный пользователь.",
                 cancellationToken: default);
         }
 
@@ -391,7 +389,8 @@ namespace FitnessBot.TelegramBot.Handlers
 
                     return
                         $"Id={u.Id}, Tg={u.TelegramId}, Имя={u.Name},\n" +
-                        $"  Последняя активность: {u.LastActivityAt:dd.MM.yyyy HH:mm} UTC ({status})";
+                        $"  Последняя активность: {u.LastActivityAt:dd.MM.yyyy HH:mm} " +
+                        $"UTC ({status})";
                 });
 
             var text = "Активность пользователей:\n\n" + string.Join("\n\n", lines);
@@ -424,7 +423,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 if (geoDist.Count == 0) return "нет данных";
                 return string.Join(", ", geoDist
                     .OrderByDescending(kv => kv.Value)
-                    .Select(kv => $"{(string.IsNullOrWhiteSpace(kv.Key) ? "(не указан)" : kv.Key)}: {kv.Value}"));
+                    .Select(kv => $"{(string.IsNullOrWhiteSpace(kv.Key) ? "(не указан)" : 
+                    kv.Key)}: {kv.Value}"));
             }
 
             var text =
@@ -518,15 +518,15 @@ namespace FitnessBot.TelegramBot.Handlers
                             ctx.ChatId,
                             "✅ Тестовая запись добавлена в change_logs. Проверьте командой /change_log",
                             cancellationToken: default);
-                        break; // Успешно отправлено
+                        break; 
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"❌ Попытка {i + 1}/3 не удалась: {ex.Message}");
                         if (i < 2)
-                            await Task.Delay(1000); // Ждём 1 секунду перед повтором
+                            await Task.Delay(1000); 
                         else
-                            throw; // После 3 попыток пробрасываем ошибку
+                            throw; 
                     }
                 }
             }

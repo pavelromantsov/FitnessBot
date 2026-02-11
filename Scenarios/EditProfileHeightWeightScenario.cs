@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
+﻿using FitnessBot.Core.Services;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace FitnessBot.Scenarios
 {
@@ -31,7 +26,8 @@ namespace FitnessBot.Scenarios
             switch (context.CurrentStep)
             {
                 case 0: // Получение роста
-                    if (!double.TryParse(message.Text, out var height) || height < 100 || height > 250)
+                    if (!double.TryParse(message.Text, out var height) || height < 100 || 
+                        height > 250)
                     {
                         await bot.SendMessage(
                             message.Chat.Id,
@@ -50,7 +46,8 @@ namespace FitnessBot.Scenarios
                     return ScenarioResult.InProgress;
 
                 case 1: // Получение веса и сохранение
-                    if (!double.TryParse(message.Text, out var weight) || weight < 30 || weight > 300)
+                    if (!double.TryParse(message.Text, out var weight) || weight < 30 || 
+                        weight > 300)
                     {
                         await bot.SendMessage(
                             message.Chat.Id,
@@ -62,7 +59,8 @@ namespace FitnessBot.Scenarios
                     var heightValue = (double)context.Data["height"];
 
                     // Сохраняем замер ИМТ
-                    var record = await _bmiService.SaveMeasurementAsync(context.UserId, heightValue, weight);
+                    var record = await _bmiService.SaveMeasurementAsync(context.UserId, 
+                        heightValue, weight);
 
                     await bot.SendMessage(
                         message.Chat.Id,

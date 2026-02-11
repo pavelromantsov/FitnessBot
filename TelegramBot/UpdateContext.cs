@@ -1,6 +1,5 @@
-using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using DomainUser = FitnessBot.Core.Entities.User;
 
 namespace FitnessBot.TelegramBot

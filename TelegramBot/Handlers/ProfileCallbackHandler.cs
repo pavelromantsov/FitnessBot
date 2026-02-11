@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using FitnessBot.Core.Services;
-using FitnessBot.Infrastructure.DataAccess;
+﻿using FitnessBot.Core.Services;
 using FitnessBot.Scenarios;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -73,12 +70,17 @@ namespace FitnessBot.TelegramBot.Handlers
         {
             var buttons = new[]
             {
-        new[] { InlineKeyboardButton.WithCallbackData("📏 Изменить рост и вес", "profile_edit_bmi") },
-        new[] { InlineKeyboardButton.WithCallbackData("🎂 Изменить возраст", "profile_edit_age") },
-        new[] { InlineKeyboardButton.WithCallbackData("🏙️ Изменить город", "profile_edit_city") },
-        new[] { InlineKeyboardButton.WithCallbackData("🕐 Изменить время приёмов пищи", "profile_edit_meals") },
-        new[] { InlineKeyboardButton.WithCallbackData("◀️ Назад к профилю", "profile_back") }
-    };
+                new[] { InlineKeyboardButton.WithCallbackData("📏 Изменить рост и вес", 
+                "profile_edit_bmi") },
+                new[] { InlineKeyboardButton.WithCallbackData("🎂 Изменить возраст", 
+                "profile_edit_age") },
+                new[] { InlineKeyboardButton.WithCallbackData("🏙️ Изменить город", 
+                "profile_edit_city") },
+                new[] { InlineKeyboardButton.WithCallbackData("🕐 Изменить время приёмов пищи", 
+                "profile_edit_meals") },
+                new[] { InlineKeyboardButton.WithCallbackData("◀️ Назад к профилю", 
+                "profile_back") }
+            };
 
             var keyboard = new InlineKeyboardMarkup(buttons);
 
@@ -113,7 +115,8 @@ namespace FitnessBot.TelegramBot.Handlers
             await context.Bot.SendMessage(
                 context.ChatId,
                 "🎂 **Изменение возраста**\n\n" +
-                $"Текущий возраст: {(context.User.Age.HasValue ? context.User.Age.ToString() : "не указан")}\n\n" +
+                $"Текущий возраст: {(context.User.Age.HasValue ? context.User.Age.ToString() : 
+                "не указан")}\n\n" +
                 "Введите новый возраст (число от 10 до 120):",
                 cancellationToken: default);
 
@@ -141,7 +144,8 @@ namespace FitnessBot.TelegramBot.Handlers
             await context.Bot.SendMessage(
                 context.ChatId,
                 "🏙️ **Изменение города**\n\n" +
-                $"Текущий город: {(string.IsNullOrEmpty(context.User.City) ? "не указан" : context.User.City)}\n\n" +
+                $"Текущий город: {(string.IsNullOrEmpty(context.User.City) ? "не указан" : 
+                context.User.City)}\n\n" +
                 "Введите название города:",
                 cancellationToken: default);
 
@@ -201,9 +205,12 @@ namespace FitnessBot.TelegramBot.Handlers
                 $"TelegramId: `{user.TelegramId}`\n\n" +
                 bmiInfo +
                 $"🕐 **Время приёмов пищи:**\n" +
-                $"Завтрак: {(user.BreakfastTime.HasValue ? user.BreakfastTime.Value.ToString(@"hh\:mm") : "не установлено")}\n" +
-                $"Обед: {(user.LunchTime.HasValue ? user.LunchTime.Value.ToString(@"hh\:mm") : "не установлено")}\n" +
-                $"Ужин: {(user.DinnerTime.HasValue ? user.DinnerTime.Value.ToString(@"hh\:mm") : "не установлено")}\n\n" +
+                $"Завтрак: {(user.BreakfastTime.HasValue ? 
+                user.BreakfastTime.Value.ToString(@"hh\:mm") : "не установлено")}\n" +
+                $"Обед: {(user.LunchTime.HasValue ? 
+                user.LunchTime.Value.ToString(@"hh\:mm") : "не установлено")}\n" +
+                $"Ужин: {(user.DinnerTime.HasValue ? 
+                user.DinnerTime.Value.ToString(@"hh\:mm") : "не установлено")}\n\n" +
                 $"📅 Создан: {user.CreatedAt:dd.MM.yyyy HH:mm}\n" +
                 $"🕐 Последняя активность: {user.LastActivityAt:dd.MM.yyyy HH:mm}";
 
@@ -229,7 +236,6 @@ namespace FitnessBot.TelegramBot.Handlers
                 cancellationToken: default);
         }
 
-
         private async Task StartEditBmi(UpdateContext context)
         {
             await context.Bot.DeleteMessage(
@@ -240,13 +246,12 @@ namespace FitnessBot.TelegramBot.Handlers
             var scenarioContext = new ScenarioContext
             {
                 UserId = context.User.Id,
-                CurrentScenario = ScenarioType.EditProfileHeightWeight, // ИЗМЕНЕНО ЗДЕСЬ
+                CurrentScenario = ScenarioType.EditProfileHeightWeight,
                 CurrentStep = 0
             };
 
             await _contextRepository.SetContext(context.User.Id, scenarioContext, default);
 
-            // Получаем текущие данные, если есть
             var latestBmi = await _bmiService.GetLastAsync(context.User.Id);
             var currentDataText = latestBmi != null
                 ? $"Текущие данные: рост {latestBmi.HeightCm} см, вес {latestBmi.WeightKg} кг\n\n"

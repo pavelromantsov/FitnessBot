@@ -82,6 +82,12 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
+            if (normalizedCommand.Contains("распознать блюдо по фото") || normalizedCommand == "/foodphoto")
+            {
+                await StartFoodPhotoFlow(context);
+                return true;
+            }
+
             if (normalizedCommand.Contains("цель дня") || normalizedCommand == "/setgoal")
             {
                 await StartSetDailyGoalScenario(context);
@@ -137,28 +143,30 @@ namespace FitnessBot.TelegramBot.Handlers
         private async Task StartCommand(UpdateContext ctx)
         {
             var rows = new List<List<KeyboardButton>>
-            {
-                // Основные команды
-                new() { new KeyboardButton("📊 Сегодня"), new KeyboardButton("📈 Отчёт") },
-                new() { new KeyboardButton("⚖️ ИМТ"), new KeyboardButton("🍽️ Добавить еду") },
-                new() { new KeyboardButton("🥗 Приём пищи"), new KeyboardButton("🎯 Цель дня") },
-        
-                // Настройки
-                new() { new KeyboardButton("🕐 Время питания"), new KeyboardButton("⏰ Напоминания") },
-                new() { new KeyboardButton("✏️ Профиль"), new KeyboardButton("📊 Графики") },
-        
-                // Интеграции и помощь
-                new() { new KeyboardButton("🔗 Google Fit"), new KeyboardButton("ℹ️ Помощь") }
+    {
+        // Основные команды
+        new() { new KeyboardButton("📊 Сегодня"), new KeyboardButton("📈 Отчёт") },
+        new() { new KeyboardButton("⚖️ ИМТ"), new KeyboardButton("🍽️ Добавить еду") },
+        new() { new KeyboardButton("🥗 Приём пищи"), new KeyboardButton("🎯 Цель дня") },
 
-            };
+        // НОВОЕ: распознавание по фото
+        new() { new KeyboardButton("📷 Распознать блюдо по фото") },
+
+        // Настройки
+        new() { new KeyboardButton("🕐 Время питания"), new KeyboardButton("⏰ Напоминания") },
+        new() { new KeyboardButton("✏️ Профиль"), new KeyboardButton("📊 Графики") },
+
+        // Интеграции и помощь
+        new() { new KeyboardButton("🔗 Google Fit"), new KeyboardButton("ℹ️ Помощь") }
+    };
 
             if (ctx.User.Role == UserRole.Admin)
             {
                 rows.Add(new List<KeyboardButton>
-                {
-                    new KeyboardButton("👨‍💼 Админ: Пользователи"),
-                    new KeyboardButton("📊 Админ: Статистика")
-                });
+        {
+            new KeyboardButton("👨‍💼 Админ: Пользователи"),
+            new KeyboardButton("📊 Админ: Статистика")
+        });
             }
 
             var keyboard = new ReplyKeyboardMarkup(rows)
@@ -172,7 +180,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 "🏃‍♂️ **Основные команды:**\n" +
                 "• 📊 Сегодня — статистика за день\n" +
                 "• 🍽️ Добавить еду — быстрое добавление\n" +
-                "• 🥗 Приём пищи — полная запись с БЖУ\n\n" +
+                "• 🥗 Приём пищи — полная запись с БЖУ\n" +
+                "• 📷 Распознать блюдо по фото — отправьте фото блюда\n\n" +
                 "📈 **Графики и отчёты:**\n" +
                 "• 📊 Графики — визуализация прогресса\n" +
                 "• 📈 Отчёт — краткий отчёт за период\n\n" +
@@ -185,6 +194,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 cancellationToken: default);
         }
 
+
         private async Task HelpCommand(UpdateContext ctx)
         {
             var helpText =
@@ -194,7 +204,8 @@ namespace FitnessBot.TelegramBot.Handlers
                 "📊 Сегодня — статистика за сегодня\n" +
                 "📈 Отчёт — краткий отчёт за период\n" +
                 "🍽️ Добавить еду — быстро добавить калории\n" +
-                "🥗 Приём пищи — добавить с БЖУ\n\n" +
+                "🥗 Приём пищи — добавить с БЖУ\n" +
+                "📷 Распознать блюдо по фото — отправьте фото, я попробую определить блюдо\n\n" +
 
                 "⚖️ **Расчёты и ИМТ:**\n" +
                 "⚖️ ИМТ — расчёт индекса массы тела\n" +
@@ -234,6 +245,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 helpText,
                 cancellationToken: default);
         }
+
         private async Task ShowBmiFromProfile(UpdateContext ctx)
         {
             // Получаем последний замер ИМТ пользователя
@@ -717,6 +729,15 @@ namespace FitnessBot.TelegramBot.Handlers
 
             var scenario = GetScenario(ScenarioType.ConnectGoogleFit);
             await scenario.HandleMessageAsync(ctx.Bot, context, ctx.Message, default);
+        }
+        private async Task StartFoodPhotoFlow(UpdateContext ctx)
+        {
+            await ctx.Bot.SendMessage(
+                ctx.ChatId,
+                "📷 Отправьте фото блюда одним сообщением.\n" +
+                "Я попробую распознать его и, если сервис вернёт данные, подскажу калории и БЖУ.\n" +
+                "Если калорий не будет, предложу добавить приём пищи вручную.",
+                cancellationToken: default);
         }
 
         private IScenario GetScenario(ScenarioType type)

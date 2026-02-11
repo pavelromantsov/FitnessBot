@@ -51,7 +51,8 @@ namespace FitnessBot.Scenarios
 
                 case 1:
                     {
-                        if (text != "-" && (!int.TryParse(text, out var age) || age < 10 || age > 100))
+                        if (text != "-" && (!int.TryParse(text, out var age) || 
+                            age < 10 || age > 100))
                         {
                             await bot.SendMessage(
                                 message.Chat.Id,
@@ -74,7 +75,8 @@ namespace FitnessBot.Scenarios
 
                 case 2:
                     {
-                        if (text != "-" && (!double.TryParse(text, out var height) || height < 100 || height > 250))
+                        if (text != "-" && (!double.TryParse(text, out var height) || 
+                            height < 100 || height > 250))
                         {
                             await bot.SendMessage(
                                 message.Chat.Id,
@@ -97,7 +99,8 @@ namespace FitnessBot.Scenarios
 
                 case 3:
                     {
-                        if (text != "-" && (!double.TryParse(text, out var weight) || weight < 30 || weight > 300))
+                        if (text != "-" && (!double.TryParse(text, out var weight) || 
+                            weight < 30 || weight > 300))
                         {
                             await bot.SendMessage(
                                 message.Chat.Id,
@@ -126,13 +129,16 @@ namespace FitnessBot.Scenarios
                         if (user != null)
                         {
                             if (context.Data.TryGetValue("age", out var ageObj))
-                                user.Age = int.Parse(ageObj!.ToString()!, CultureInfo.InvariantCulture);
+                                user.Age = int.Parse(ageObj!.ToString()!, 
+                                    CultureInfo.InvariantCulture);
 
                             if (context.Data.TryGetValue("height", out var hObj))
-                                user.HeightCm = double.Parse(hObj!.ToString()!, CultureInfo.InvariantCulture);
+                                user.HeightCm = double.Parse(hObj!.ToString()!, 
+                                    CultureInfo.InvariantCulture);
 
                             if (context.Data.TryGetValue("weight", out var wObj))
-                                user.WeightKg = double.Parse(wObj!.ToString()!, CultureInfo.InvariantCulture);
+                                user.WeightKg = double.Parse(wObj!.ToString()!, 
+                                    CultureInfo.InvariantCulture);
 
                             if (city != null)
                                 user.City = city;
@@ -140,7 +146,8 @@ namespace FitnessBot.Scenarios
                             await _userService.SaveAsync(user);
 
                             if (user.HeightCm.HasValue && user.WeightKg.HasValue)
-                                await _bmiService.SaveMeasurementAsync(user.Id, user.HeightCm.Value, user.WeightKg.Value);
+                                await _bmiService.SaveMeasurementAsync(user.Id, 
+                                    user.HeightCm.Value, user.WeightKg.Value);
                         }
 
                         await bot.SendMessage(

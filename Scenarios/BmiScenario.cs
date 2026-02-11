@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Services;
-using Telegram.Bot.Types;
-using Telegram.Bot;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
+using FitnessBot.Core.Services;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace FitnessBot.Scenarios
 {
@@ -77,7 +72,8 @@ namespace FitnessBot.Scenarios
 
                     await bot.SendMessage(
                         chatId,
-                        $"Ваш ИМТ: {record.Bmi:F1}, категория: {record.Category}.\n{record.Recommendation}",
+                        $"Ваш ИМТ: {record.Bmi:F1}, категория: {record.Category}.\n" +
+                        $"{record.Recommendation}",
                         cancellationToken: ct);
 
                     return ScenarioResult.Completed;

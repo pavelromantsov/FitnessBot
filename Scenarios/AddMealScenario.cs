@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Globalization;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot.Types;
 using Telegram.Bot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FitnessBot.Scenarios
 {
@@ -40,16 +35,16 @@ namespace FitnessBot.Scenarios
                     {
                         var keyboard = new ReplyKeyboardMarkup(new[]
                         {
-        new[]
-        {
-            new KeyboardButton("Готовое блюдо (БЖУ на порцию)"),
-            new KeyboardButton("По 100 г продукта")
-        },
-        new[]
-        {
-            new KeyboardButton("Отмена")
-        }
-    })
+                            new[]
+                            {
+                                new KeyboardButton("Готовое блюдо (БЖУ на порцию)"),
+                                new KeyboardButton("По 100 г продукта")
+                            },
+                            new[]
+                            {
+                                new KeyboardButton("Отмена")
+                            }
+                        })
                         {
                             ResizeKeyboard = true
                         };
@@ -79,7 +74,8 @@ namespace FitnessBot.Scenarios
                         {
                             context.Data["mode"] = "by100g";
                         }
-                        else if (mode.StartsWith("отмена") || mode.Equals("cancel", StringComparison.OrdinalIgnoreCase))
+                        else if (mode.StartsWith("отмена") || mode.Equals("cancel", 
+                            StringComparison.OrdinalIgnoreCase))
                         {
                             await bot.SendMessage(chatId, "Добавление блюда отменено.", cancellationToken: ct);
                             return ScenarioResult.Completed;
@@ -179,7 +175,8 @@ namespace FitnessBot.Scenarios
                 // Шаг 4 — калории
                 case 4:
                     {
-                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var calories)
+                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var calories)
                             || calories <= 0)
                         {
                             await bot.SendMessage(
@@ -203,7 +200,8 @@ namespace FitnessBot.Scenarios
                 // Шаг 5 — БЖУ одной порции, сохранение
                 case 5:
                     {
-                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var protein)
+                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var protein)
                             || protein < 0)
                         {
                             await bot.SendMessage(
@@ -226,7 +224,8 @@ namespace FitnessBot.Scenarios
 
                 case 6:
                     {
-                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var fat)
+                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var fat)
                             || fat < 0)
                         {
                             await bot.SendMessage(
@@ -248,7 +247,8 @@ namespace FitnessBot.Scenarios
                     }
                 case 7:
                     {
-                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var carbs)
+                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var carbs)
                             || carbs < 0)
                         {
                             await bot.SendMessage(
@@ -260,8 +260,10 @@ namespace FitnessBot.Scenarios
 
                         var mealType = (string)context.Data["mealType"];
                         var calories = (double)context.Data["calories"];
-                        var protein = context.Data.TryGetValue("protein", out var pObj) && pObj is double p ? p : 0;
-                        var fat = context.Data.TryGetValue("fat", out var fObj) && fObj is double f ? f : 0;
+                        var protein = context.Data.TryGetValue("protein", out var pObj) 
+                            && pObj is double p ? p : 0;
+                        var fat = context.Data.TryGetValue("fat", out var fObj) 
+                            && fObj is double f ? f : 0;
 
                         var meal = new Meal
                         {
@@ -278,7 +280,8 @@ namespace FitnessBot.Scenarios
 
                         await bot.SendMessage(
                             chatId,
-                            $"Добавлено: {calories:F0} ккал, БЖУ {protein:F0}/{fat:F0}/{carbs:F0}.",
+                            $"Добавлено: {calories:F0} ккал, " +
+                            $"БЖУ {protein:F0}/{fat:F0}/{carbs:F0}.",
                             cancellationToken: ct);
 
                         return ScenarioResult.Completed;
@@ -302,14 +305,19 @@ namespace FitnessBot.Scenarios
 
                         var name = parts[0].Trim();
 
-                        if (!double.TryParse(parts[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var calories100) ||
-                            !double.TryParse(parts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var protein100) ||
-                            !double.TryParse(parts[3].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var fat100) ||
-                            !double.TryParse(parts[4].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var carbs100))
+                        if (!double.TryParse(parts[1].Trim(), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var calories100) ||
+                            !double.TryParse(parts[2].Trim(), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var protein100) ||
+                            !double.TryParse(parts[3].Trim(), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var fat100) ||
+                            !double.TryParse(parts[4].Trim(), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var carbs100))
                         {
                             await bot.SendMessage(
                                 chatId,
-                                "Не удалось прочитать числа. Пример: `гречка варёная; 110; 4; 1.8; 21`",
+                                "Не удалось прочитать числа. Пример: " +
+                                "`гречка варёная; 110; 4; 1.8; 21`",
                                 cancellationToken: ct);
                             return ScenarioResult.InProgress;
                         }
@@ -331,7 +339,8 @@ namespace FitnessBot.Scenarios
                 // Шаг 11 — масса в граммах, пересчёт и сохранение
                 case 11:
                     {
-                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var grams)
+                        if (!double.TryParse(text.Replace(",", "."), NumberStyles.Any, 
+                            CultureInfo.InvariantCulture, out var grams)
                             || grams <= 0)
                         {
                             await bot.SendMessage(
@@ -370,13 +379,14 @@ namespace FitnessBot.Scenarios
 
                         await bot.SendMessage(
                             chatId,
-                            $"Добавлено: {title}, {grams:F0} г — {calories:F0} ккал, БЖУ {protein:F0}/{fat:F0}/{carbs:F0}.",
+                            $"Добавлено: {title}, {grams:F0} г — {calories:F0} ккал, " +
+                            $"БЖУ {protein:F0}/{fat:F0}/{carbs:F0}.",
                             cancellationToken: ct);
 
                         return ScenarioResult.Completed;
                     }
 
-                default:
+                    default:
                     return ScenarioResult.Completed;
             }
         }

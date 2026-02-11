@@ -85,8 +85,10 @@ namespace FitnessBot.Scenarios
                     }
 
                     // Сохраняем цель
-                    var stepsGoal = int.Parse(context.Data["steps"]!.ToString()!, CultureInfo.InvariantCulture);
-                    var caloriesInGoal = double.Parse(context.Data["caloriesIn"]!.ToString()!, CultureInfo.InvariantCulture);
+                    var stepsGoal = int.Parse(context.Data["steps"]!.ToString()!, 
+                        CultureInfo.InvariantCulture);
+                    var caloriesInGoal = double.Parse(context.Data["caloriesIn"]!.ToString()!, 
+                        CultureInfo.InvariantCulture);
 
                     var today = DateTime.UtcNow.Date;
 
@@ -108,7 +110,8 @@ namespace FitnessBot.Scenarios
                         $"🎯 Шаги: {stepsGoal}\n" +
                         $"🍽 Макс. калорий (потребление): {caloriesInGoal:F0}\n" +
                         $"🔥 Мин. калорий (расход): {caloriesOut:F0}\n\n" +
-                        $"Бот будет автоматически отслеживать ваш прогресс и уведомит о достижении цели!",
+                        $"Бот будет автоматически отслеживать ваш прогресс и " +
+                        $"уведомит о достижении цели!",
                         cancellationToken: ct);
 
                     return ScenarioResult.Completed;

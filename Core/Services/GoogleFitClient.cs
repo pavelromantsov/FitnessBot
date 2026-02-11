@@ -149,7 +149,7 @@ namespace FitnessBot.Core.Services
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "https://oauth2.googleapis.com/token"); // офиц. endpoint[web:30][web:31]
+                "https://oauth2.googleapis.com/token"); 
 
             request.Content = content;
 
@@ -184,7 +184,6 @@ namespace FitnessBot.Core.Services
 
             var expiresAtUtc = DateTime.UtcNow.AddSeconds(expiresIn);
 
-            // refresh_token обычно НЕ возвращают при рефреше – используем старый[web:31][web:34]
             return (accessToken, expiresAtUtc);
         }
     }

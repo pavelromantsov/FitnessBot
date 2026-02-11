@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
 using FitnessBot.Core.Entities;
 using LinqToDB;

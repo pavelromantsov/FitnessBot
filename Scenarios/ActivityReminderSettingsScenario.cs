@@ -28,24 +28,30 @@ namespace FitnessBot.Scenarios
                 {
                     new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("✅ Включить все", "activity_reminders_all_on"),
-                        InlineKeyboardButton.WithCallbackData("❌ Отключить все", "activity_reminders_all_off")
+                        InlineKeyboardButton.WithCallbackData("✅ Включить все", 
+                        "activity_reminders_all_on"),
+                        InlineKeyboardButton.WithCallbackData("❌ Отключить все", 
+                        "activity_reminders_all_off")
                     },
                     new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("☀️ Утренние (9:00)", "activity_reminders_morning"),
+                        InlineKeyboardButton.WithCallbackData("☀️ Утренние (9:00)", 
+                        "activity_reminders_morning"),
                     },
                     new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("🍽 Обеденные (13:00)", "activity_reminders_lunch"),
+                        InlineKeyboardButton.WithCallbackData("🍽 Обеденные (13:00)", 
+                        "activity_reminders_lunch"),
                     },
                     new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("🧘‍♂️ Дневные (16:00)", "activity_reminders_afternoon"),
+                        InlineKeyboardButton.WithCallbackData("🧘‍♂️ Дневные (16:00)", 
+                        "activity_reminders_afternoon"),
                     },
                     new[]
                     {
-                        InlineKeyboardButton.WithCallbackData("🌆 Вечерние (19:00)", "activity_reminders_evening"),
+                        InlineKeyboardButton.WithCallbackData("🌆 Вечерние (19:00)", 
+                        "activity_reminders_evening"),
                     }
                 });
 

@@ -15,7 +15,6 @@ namespace FitnessBot.Infrastructure.DataAccess
             _connectionFactory = connectionFactory;
         }
 
-        // маппинг Meal <-> MealModel
         private static MealModel Map(Meal m) => new()
         {
             Id = m.Id,
@@ -58,9 +57,9 @@ namespace FitnessBot.Infrastructure.DataAccess
                             m.DateTime >= from &&
                             m.DateTime < to)
                 .OrderBy(m => m.DateTime)
-                .ToListAsync(); // List<MealModel>
+                .ToListAsync(); 
 
-            return models.Select(Map).ToList(); // List<Meal> -> IReadOnlyList<Meal>
+            return models.Select(Map).ToList(); 
         }
     }
 }

@@ -58,7 +58,8 @@ namespace FitnessBot.TelegramBot
             Update update,
             CancellationToken cancellationToken)
         {
-            var text = update.Message?.Text ?? update.CallbackQuery?.Data ?? update.Type.ToString();
+            var text = update.Message?.Text ?? update.CallbackQuery?.Data ?? 
+                update.Type.ToString();
             OnHandleUpdateStarted?.Invoke(text);
 
             try
@@ -66,7 +67,8 @@ namespace FitnessBot.TelegramBot
                 await (update switch
                 {
                     { Message: { } message } => OnMessage(update, message, cancellationToken),
-                    { CallbackQuery: { } callbackQuery } => OnCallbackQuery(update, callbackQuery, cancellationToken),
+                    { CallbackQuery: { } callbackQuery } => OnCallbackQuery(update, 
+                    callbackQuery, cancellationToken),
                     _ => OnUnknown(update, cancellationToken)
                 });
             }
@@ -111,7 +113,8 @@ namespace FitnessBot.TelegramBot
 
             if (exception is ApiRequestException apiEx)
             {
-                message = $"Telegram API Error [{apiEx.ErrorCode}] from {source}: {apiEx.Message}";
+                message = $"Telegram API Error [{apiEx.ErrorCode}] from {source}: " +
+                    $"{apiEx.Message}";
             }
             else
             {
@@ -140,7 +143,6 @@ namespace FitnessBot.TelegramBot
                 return;
             }
 
-            // Получаем/регистрируем пользователя (как у тебя было)
             var user = await _userService.GetByTelegramIdAsync(telegramId);
             if (user == null)
             {
@@ -189,7 +191,6 @@ namespace FitnessBot.TelegramBot
                 }
             }
 
-            // дальше твоя существующая логика сценариев/команд
             if (message.Text is null)
                 return;
 
@@ -238,7 +239,6 @@ namespace FitnessBot.TelegramBot
             string[] args,
             CancellationToken ct)
         {
-            // Create UpdateContext
             var context = new UpdateContext(
                 _botClient,
                 user,
@@ -247,21 +247,20 @@ namespace FitnessBot.TelegramBot
                 null,
                 ct);
 
-            // Try each handler in order (priority matters!)
             foreach (var handler in _commandHandlers)
             {
                 if (await handler.HandleAsync(context, command, args))
-                    return; // Command handled
+                    return; 
             }
 
-            // No handler matched
             await _botClient.SendMessage(
                 chatId,
                 "Неизвестная команда. Используйте /help.",
                 cancellationToken: ct);
         }
 
-        private async Task OnCallbackQuery(Update update, CallbackQuery callbackQuery, CancellationToken ct)
+        private async Task OnCallbackQuery(Update update, CallbackQuery callbackQuery, 
+            CancellationToken ct)
         {
             try
             {
@@ -307,7 +306,6 @@ namespace FitnessBot.TelegramBot
             string data,
             CancellationToken ct)
         {
-            // Create UpdateContext
             var context = new UpdateContext(
                 _botClient,
                 user,
@@ -316,14 +314,12 @@ namespace FitnessBot.TelegramBot
                 callbackQuery,
                 ct);
 
-            // Try each handler in order
             foreach (var handler in _callbackHandlers)
             {
                 if (await handler.HandleAsync(context, data))
-                    return; // Callback handled
+                    return; 
             }
 
-            // No handler matched
             await _botClient.AnswerCallbackQuery(
                 callbackQuery.Id,
                 "Неизвестное действие.",

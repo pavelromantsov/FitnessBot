@@ -83,8 +83,7 @@ namespace FitnessBot.BackgroundTasks
             var goal = await _dailyGoalRepository.GetByUserAndDateAsync(userId, today);
 
             if (goal == null || goal.IsCompleted)
-                return; // Нет цели или уже выполнена
-
+                return; 
             // Получаем данные за сегодня
             var meals = await _mealRepository.GetByUserAndPeriodAsync(userId, today, tomorrow);
             var activities = await _activityRepository.GetByUserAndPeriodAsync(userId, today, tomorrow);
