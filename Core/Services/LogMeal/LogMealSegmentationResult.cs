@@ -2,7 +2,6 @@
 {
     public class LogMealSegmentationResult
     {
-
         public long ImageId { get; set; }
 
     }
