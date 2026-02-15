@@ -2,9 +2,10 @@
 {
     public class LogMealNutritionResult
     {
-        public double EnergyKcal { get; set; }   
-        public double Proteins { get; set; }    
-        public double Carbs { get; set; }  
-        public double Fats { get; set; }   
+        public long ImageId { get; set; }
+        public bool HasNutritionalInfo { get; set; }
+        public NutritionalInfoRaw Nutritional_Info { get; set; } = default!;
+        //public List<NutritionalInfoPerItem>? Nutritional_Info_Per_Item { get; set; }
+        public double Serving_Size { get; set; }
     }
 }

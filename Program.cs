@@ -90,7 +90,8 @@ namespace FitnessBot
             new ConnectGoogleFitScenario(userService),
             new EditProfileAgeScenario(userService),
             new EditProfileCityScenario(userService),
-            new EditProfileHeightWeightScenario(bmiService)
+            new EditProfileHeightWeightScenario(bmiService),
+            new PhotoMealGramsScenario (nutritionService,userService)
             };
 
             // 7. Telegram bot
@@ -122,6 +123,8 @@ namespace FitnessBot
             };
 
             // 9. Callback Handlers
+            var customCaloriesCallbackHandler = new CustomCaloriesCallbackHandler(
+                contextRepository, scenarios);
             var callbackHandlers = new ICallbackHandler[]
             {
             new AdminCallbackHandler(userService),
@@ -130,12 +133,14 @@ namespace FitnessBot
             new ChartCallbackHandler(chartService, chartDataService, chartImageService),
             new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
             new ProfileCallbackHandler(userService, bmiService, contextRepository),
-            new BmiCallbackHandler(contextRepository)
+            new BmiCallbackHandler(contextRepository),
+            customCaloriesCallbackHandler
             };
             
             var photoHandlers = new IPhotoHandler[]
             {
-                new FoodPhotoHandler(logMealClient, nutritionService, userService,fileBaseUrl)
+                new FoodPhotoHandler(logMealClient, nutritionService,  
+                    userService,contextRepository,fileBaseUrl)
             };
 
             // 10. UpdateHandler 

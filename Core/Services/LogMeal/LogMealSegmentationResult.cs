@@ -2,7 +2,8 @@
 {
     public class LogMealSegmentationResult
     {
-        public NutritionalInfo? TotalNutritionalInfo { get; set; }
-        public DishNutritionalInfo[]? Dishes { get; set; }
+
+        public long ImageId { get; set; }
+
     }
 }
