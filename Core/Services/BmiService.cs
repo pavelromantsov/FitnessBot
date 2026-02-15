@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Core.Services
@@ -17,7 +12,8 @@ namespace FitnessBot.Core.Services
             _bmiRepository = bmiRepository;
         }
 
-        public (double bmi, string category, string recommendation) Calculate(double heightCm, double weightKg)
+        public (double bmi, string category, string recommendation) Calculate(
+                    double heightCm, double weightKg)
         {
             double heightM = heightCm / 100.0;
             double bmi = weightKg / Math.Pow(heightM, 2);
@@ -63,6 +59,6 @@ namespace FitnessBot.Core.Services
         }
 
         public Task<BmiRecord?> GetLastAsync(long userId) => _bmiRepository.GetLastAsync(userId);
-    }
 
+    }
 }

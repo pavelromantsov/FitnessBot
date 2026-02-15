@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Core.Services
@@ -35,10 +30,60 @@ namespace FitnessBot.Core.Services
         public Task<IReadOnlyList<Activity>> GetForPeriodAsync(long userId, DateTime from, DateTime to) =>
             _activities.GetByUserAndPeriodAsync(userId, from, to);
 
-        public async Task<double> GetTotalCaloriesBurnedAsync(long userId, DateTime from, DateTime to)
+        public async Task<(double caloriesOut, int steps)> GetMergedTotalsAsync(
+                    long userId,
+                    DateTime from,
+                    DateTime to)
         {
             var list = await _activities.GetByUserAndPeriodAsync(userId, from, to);
-            return list.Sum(a => a.CaloriesBurned);
+
+            var grouped = list
+                .GroupBy(a => a.Date.Date)
+                .Select(g =>
+                {
+                    var google = g.Where(a => a.Source == "googlefit").ToList();
+                    var selected = google.Any() ? google : g.ToList();
+
+                    return new
+                    {
+                        Date = g.Key,
+                        Steps = selected.Sum(a => a.Steps),
+                        Calories = selected.Sum(a => a.CaloriesBurned)
+                    };
+                })
+                .ToList();
+
+            var totalCalories = grouped.Sum(x => x.Calories);
+            var totalSteps = grouped.Sum(x => x.Steps);
+
+            return (totalCalories, totalSteps);
+        }
+
+        public async Task<IReadOnlyList<Activity>> GetMergedForPeriodAsync(long userId, DateTime from, DateTime to)
+        {
+            var list = await _activities.GetByUserAndPeriodAsync(userId, from, to);
+
+            var result = list
+                .GroupBy(a => a.Date.Date)
+                .Select(g =>
+                {
+                    var google = g.Where(a => a.Source == "googlefit").ToList();
+                    var selected = google.Any() ? google : g.ToList();
+
+                    return new Activity
+                    {
+                        UserId = userId,
+                        Date = g.Key,
+                        Steps = selected.Sum(a => a.Steps),
+                        ActiveMinutes = selected.Sum(a => a.ActiveMinutes),
+                        CaloriesBurned = selected.Sum(a => a.CaloriesBurned),
+                        Source = google.Any() ? "googlefit" : "manual"
+                    };
+                })
+                .OrderBy(a => a.Date)
+                .ToList();
+
+            return result;
         }
     }
 

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FitnessBot.TelegramBot.DTO
+﻿namespace FitnessBot.TelegramBot.DTO
 {
     // action|userId|calories
     public class MealCaloriesCallbackDto : CallbackDto
@@ -23,7 +17,8 @@ namespace FitnessBot.TelegramBot.DTO
         {
             var parts = input.Split('|');
             if (parts.Length < 3)
-                throw new ArgumentException("Некорректный формат callbackData для MealCaloriesCallbackDto.");
+                throw new ArgumentException("Некорректный формат callbackData для " +
+                    "MealCaloriesCallbackDto.");
 
             var action = parts[0];
 

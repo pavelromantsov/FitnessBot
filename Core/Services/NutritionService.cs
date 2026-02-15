@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Core.Services
@@ -20,6 +15,7 @@ namespace FitnessBot.Core.Services
         public Task AddMealAsync(long userId, DateTime at, string mealType,
             double calories, double protein, double fat, double carbs, string? photoUrl)
         {
+            
             var meal = new Meal
             {
                 UserId = userId,
@@ -52,8 +48,9 @@ namespace FitnessBot.Core.Services
         }
         public async Task AddMealAsync(Meal meal, CancellationToken ct = default)
         {
+            if (meal.Calories < 0)
+                throw new ArgumentException("Калории не могут быть отрицательными");
 
-            if (meal.Calories <= 0) throw new ArgumentException("Калории должны быть > 0");
             await _meals.AddAsync(meal);
         }
 

@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LinqToDB.Mapping;
-using ColumnAttribute = LinqToDB.Mapping.ColumnAttribute;
-using NotNullAttribute = LinqToDB.Mapping.NotNullAttribute;
-using TableAttribute = System.ComponentModel.DataAnnotations.Schema.TableAttribute;
+﻿using TableAttribute = System.ComponentModel.DataAnnotations.Schema.TableAttribute;
 
 
 namespace FitnessBot.Core.Entities
@@ -27,5 +17,15 @@ namespace FitnessBot.Core.Entities
         public TimeSpan? BreakfastTime { get; set; }
         public TimeSpan? LunchTime { get; set; }
         public TimeSpan? DinnerTime { get; set; }
+        public double? HeightCm { get; set; }
+        public double? WeightKg { get; set; }
+        public bool ActivityRemindersEnabled { get; set; } = true;
+        public bool MorningReminderEnabled { get; set; } = true;
+        public bool LunchReminderEnabled { get; set; } = true;
+        public bool AfternoonReminderEnabled { get; set; } = true;
+        public bool EveningReminderEnabled { get; set; } = true;
+        public string? GoogleFitAccessToken { get; set; }
+        public string? GoogleFitRefreshToken { get; set; }
+        public DateTime? GoogleFitTokenExpiresAt { get; set; }
     }
 }

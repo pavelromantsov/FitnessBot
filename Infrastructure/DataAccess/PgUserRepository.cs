@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
-using FitnessBot.Core.Entities;
-using LinqToDB.Async;
-using LinqToDB;
-using LinqToDB.Data;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
+using FitnessBot.Core.Entities;
+using LinqToDB;
+using LinqToDB.Async;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
@@ -33,7 +27,17 @@ namespace FitnessBot.Infrastructure.DataAccess
             LastActivityAt = m.LastActivityAt,
             BreakfastTime = m.BreakfastTime,
             LunchTime = m.LunchTime,
-            DinnerTime = m.DinnerTime
+            DinnerTime = m.DinnerTime,
+            HeightCm = m.HeightCm,
+            WeightKg = m.WeightKg,
+            ActivityRemindersEnabled = m.ActivityRemindersEnabled,
+            MorningReminderEnabled = m.MorningReminderEnabled,
+            LunchReminderEnabled = m.LunchReminderEnabled,
+            AfternoonReminderEnabled = m.AfternoonReminderEnabled,
+            EveningReminderEnabled = m.EveningReminderEnabled,
+            GoogleFitAccessToken = m.GoogleFitAccessToken,
+            GoogleFitRefreshToken = m.GoogleFitRefreshToken,
+            GoogleFitTokenExpiresAt = m.GoogleFitTokenExpiresAt
         };
 
         private static UserModel Map(User u) => new UserModel
@@ -48,7 +52,17 @@ namespace FitnessBot.Infrastructure.DataAccess
             LastActivityAt = u.LastActivityAt,
             BreakfastTime = u.BreakfastTime,
             LunchTime = u.LunchTime,
-            DinnerTime = u.DinnerTime
+            DinnerTime = u.DinnerTime,
+            HeightCm = u.HeightCm,
+            WeightKg = u.WeightKg,
+            ActivityRemindersEnabled = u.ActivityRemindersEnabled,
+            MorningReminderEnabled = u.MorningReminderEnabled,
+            LunchReminderEnabled = u.LunchReminderEnabled,
+            AfternoonReminderEnabled = u.AfternoonReminderEnabled,
+            EveningReminderEnabled = u.EveningReminderEnabled,
+            GoogleFitAccessToken = u.GoogleFitAccessToken,
+            GoogleFitRefreshToken = u.GoogleFitRefreshToken,
+            GoogleFitTokenExpiresAt = u.GoogleFitTokenExpiresAt
         };
 
         public async Task<User?> GetByTelegramIdAsync(long telegramId)
@@ -80,6 +94,7 @@ namespace FitnessBot.Infrastructure.DataAccess
                 .FirstOrDefaultAsync(u => u.TelegramId == user.TelegramId);
 
             UserModel model;
+            
 
             if (existingModel == null)
             {
@@ -87,6 +102,8 @@ namespace FitnessBot.Infrastructure.DataAccess
                 model = Map(user);
                 model.CreatedAt = DateTime.UtcNow;
                 model.LastActivityAt = DateTime.UtcNow;
+                model.HeightCm=user.HeightCm;
+                model.WeightKg=user.WeightKg;
 
                 model.Id = await db.InsertWithInt64IdentityAsync(model);
             }
@@ -102,6 +119,11 @@ namespace FitnessBot.Infrastructure.DataAccess
                 model.BreakfastTime = user.BreakfastTime;
                 model.LunchTime = user.LunchTime;
                 model.DinnerTime = user.DinnerTime;
+                model.HeightCm = user.HeightCm;
+                model.WeightKg = user.WeightKg;
+                model.GoogleFitAccessToken = user.GoogleFitAccessToken;
+                model.GoogleFitRefreshToken = user.GoogleFitRefreshToken;
+                model.GoogleFitTokenExpiresAt = user.GoogleFitTokenExpiresAt;
                 await db.UpdateAsync(model);
             }
 
@@ -143,8 +165,25 @@ namespace FitnessBot.Infrastructure.DataAccess
             var model = await db.Users
                 .FirstOrDefaultAsync(u => u.TelegramId == telegramId, ct);
 
-            // если у вас есть маппинг Model → Entity, нужно его использовать:
             return model == null ? null : Map(model);
+        }
+        public async Task<IReadOnlyList<User>> FindByNameAsync(string namePart)
+        {
+            await using var db = _connectionFactory();
+
+            var models = await db.Users
+                .Where(u => u.Name.ToLower().Contains(namePart.ToLower()))
+                .OrderBy(u => u.Name)
+                .Take(20)
+                .ToListAsync();
+
+            return models.Select(Map).ToList();
+        }
+        public async Task UpdateAsync(User user)
+        {
+            await using var db = _connectionFactory();
+            var model = Map(user);
+            await db.UpdateAsync(model);
         }
     }
 }

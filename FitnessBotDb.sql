@@ -25,15 +25,6 @@ create table if not exists users
 create index if not exists idx_users_last_activity
     on users (last_activity_at);
 
--- =============================================
--- Table: admins
--- =============================================
-create table if not exists admins
-(
-    id       bigserial primary key,
-    user_id  bigint      not null references users (id) on delete cascade,
-    notes    text
-);
 
 -- =============================================
 -- Table: activities
@@ -173,3 +164,44 @@ create table if not exists notifications
 
 create index if not exists idx_notifications_user_scheduled
     on notifications (user_id, scheduled_at);
+
+-- =============================================
+-- Alter table: users (add registration)
+-- =============================================
+
+    alter table users
+    add column if not exists heightcm double precision,
+    add column if not exists weightkg double precision;
+
+
+-- =============================================
+-- Alter table: users (ADD REMINDER)
+-- =============================================
+    alter table users
+    add column if not exists activity_reminders_enabled boolean not null default true,
+    add column if not exists morning_reminder_enabled boolean not null default true,
+    add column if not exists lunch_reminder_enabled boolean not null default true,
+    add column if not exists afternoon_reminder_enabled boolean not null default true,
+    add column if not exists evening_reminder_enabled boolean not null default true;
+
+-- =============================================
+-- Alter table: users (Add GoogleFit)
+-- ============================================
+        
+    alter table users
+    add column if not exists googlefitaccesstoken text,
+    add column if not exists googlefitrefreshtoken text,
+    add column if not exists googlefittokenexpiresat timestamptz;
+
+-- =============================================
+-- Indexes: activities (user, date, source)
+-- ============================================
+
+    CREATE UNIQUE INDEX ux_activities_user_date_source
+    ON activities ("user_id", "date", "source");
+
+-- =============================================
+-- Alter table: error_logs (add user_id)
+-- ============================================
+
+    ALTER TABLE error_logs ADD COLUMN user_id BIGINT;

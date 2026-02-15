@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LinqToDB.Mapping;
+﻿using LinqToDB.Mapping;
 
 namespace FitnessBot.Core.DataAccess.Models
 {
@@ -12,6 +7,9 @@ namespace FitnessBot.Core.DataAccess.Models
     {
         [PrimaryKey, Identity, Column("id")]
         public long Id { get; set; }
+
+        [Column("user_id"), Nullable]  
+        public long? UserId { get; set; }
 
         [Column("timestamp"), NotNull]
         public DateTime Timestamp { get; set; }

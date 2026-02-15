@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
+﻿using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Core.Abstractions
 {
     public interface IChangeLogRepository
     {
-        Task AddAsync(ChangeLog log);
+        Task AddAsync(ChangeLog changeLog);
+        Task<List<ChangeLog>> GetRecentAsync(int count);
+        Task<List<ChangeLog>> GetByAdminIdAsync(long adminUserId, int count);
+        Task<int> GetCountAsync();
     }
 }

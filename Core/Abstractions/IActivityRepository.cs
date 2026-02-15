@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
+﻿using FitnessBot.Core.Entities;
 
 namespace FitnessBot.Core.Abstractions
 {
@@ -11,5 +6,7 @@ namespace FitnessBot.Core.Abstractions
     {
         Task AddAsync(Activity activity);
         Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, DateTime from, DateTime to);
+        Task<Activity?> GetByUserDateAndSourceAsync(long userId, DateTime dateUtc, string source, CancellationToken ct);
+        Task UpdateAsync(Activity activity, CancellationToken ct);
     }
 }

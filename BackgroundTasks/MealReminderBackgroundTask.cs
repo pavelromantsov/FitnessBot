@@ -1,10 +1,5 @@
-﻿using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
+﻿using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
-using FitnessBot.Core.Abstractions;
 using FitnessBot.Infrastructure;
 
 namespace FitnessBot.BackgroundTasks
@@ -25,7 +20,6 @@ namespace FitnessBot.BackgroundTasks
             _notificationService = notificationService;
         }
 
-        // Реализация интерфейса
         public async Task Start(CancellationToken ct)
         {
             var nowUtc = DateTime.UtcNow;
@@ -37,7 +31,7 @@ namespace FitnessBot.BackgroundTasks
             {
                 ct.ThrowIfCancellationRequested();
 
-                var localNow = nowUtc; // TODO: таймзона
+                var localNow = nowUtc; 
 
                 await CheckMealReminder(user, "BreakfastReminder", user.BreakfastTime, today, localNow, ct);
                 await CheckMealReminder(user, "LunchReminder", user.LunchTime, today, localNow, ct);

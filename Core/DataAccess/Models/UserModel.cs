@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Entities;
-using LinqToDB.Mapping;
+﻿using LinqToDB.Mapping;
 
 namespace FitnessBot.Core.DataAccess.Models
 {
@@ -43,5 +37,36 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("dinner_time")]
         public TimeSpan? DinnerTime { get; set; }
+
+        [Column("heightcm"), NotNull]
+        public double? HeightCm { get; set; }
+
+        [Column("weightkg"), NotNull]
+        public double? WeightKg { get; set; }
+
+        [Column("activity_reminders_enabled"), NotNull]
+        public bool ActivityRemindersEnabled { get; set; } = true;
+
+        [Column("morning_reminder_enabled"), NotNull]
+        public bool MorningReminderEnabled { get; set; } = true;
+
+        [Column("lunch_reminder_enabled"), NotNull]
+        public bool LunchReminderEnabled { get; set; } = true;
+
+        [Column("afternoon_reminder_enabled"), NotNull]
+        public bool AfternoonReminderEnabled { get; set; } = true;
+
+        [Column("evening_reminder_enabled"), NotNull]
+        public bool EveningReminderEnabled { get; set; } = true;
+        
+        [Column("googlefitaccesstoken", CanBeNull = true)]
+        public string? GoogleFitAccessToken { get; set; }
+
+        [Column("googlefitrefreshtoken", CanBeNull = true)]
+        public string? GoogleFitRefreshToken { get; set; }
+
+        [Column("googlefittokenexpiresat", CanBeNull = true)]
+        public DateTime? GoogleFitTokenExpiresAt { get; set; }
+
     }
 }

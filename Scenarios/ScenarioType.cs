@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FitnessBot.Scenarios
+﻿namespace FitnessBot.Scenarios
 {
     public enum ScenarioType
     {
@@ -14,5 +8,15 @@ namespace FitnessBot.Scenarios
         Meal = 3,
         CustomCalories = 4,
         MealTimeSetup = 5,
+        Registration = 6,
+        EditProfile = 7,
+        SetDailyGoal = 8,
+        ActivityReminderSettings = 9,
+        AddMeal = 10,
+        ConnectGoogleFit = 11,
+        EditProfileAge = 12,
+        EditProfileCity = 13,
+        EditProfileHeightWeight = 14,
+        PhotoMealGrams = 15
     }
 }

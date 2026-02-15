@@ -1,18 +1,19 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FitnessBot.BackgroundTasks;
+using FitnessBot.Core.Services;
+using FitnessBot.Core.Services.LogMeal;
+using FitnessBot.Infrastructure;
+using FitnessBot.Infrastructure.DataAccess;
+using FitnessBot.Scenarios;
+using FitnessBot.TelegramBot;
+using FitnessBot.TelegramBot.Handlers;
+using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 
-using FitnessBot.Core.Entities;
-using FitnessBot.Core.Services;
-using FitnessBot.Infrastructure.DataAccess;
-using FitnessBot.Scenarios;
-using FitnessBot.TelegramBot;
-using FitnessBot.BackgroundTasks;
-using FitnessBot.Infrastructure;
-
 namespace FitnessBot
 {
+
     public class Program
     {
         public static async Task Main()
@@ -27,51 +28,132 @@ namespace FitnessBot
 
             string connectionString = configuration.GetConnectionString("FitnessBotDb")
                 ?? throw new InvalidOperationException("Connection string not found");
+            
+            var fileBaseUrl = $"https://api.telegram.org/file/bot{botToken}/";
 
             // 2. DataContext + фабрика
-            var dataContextFactory = new Func<PgDataContext>(() => new PgDataContext(connectionString));
+            var dataContextFactory = new Func<PgDataContext>(() => 
+            new PgDataContext(connectionString));
 
-            // 3. Репозитории и сервисы
+            // 3. Репозитории
             var userRepo = new PgUserRepository(dataContextFactory);
-            var notificationRepo = new PgNotificationRepository(dataContextFactory);           
-            var notificationService = new NotificationService(notificationRepo);
-
+            var notificationRepo = new PgNotificationRepository(dataContextFactory);
+            var dailyGoalRepo = new PgDailyGoalRepository(dataContextFactory);  
+            var bmiRepo = new PgBmiRepository(dataContextFactory);               
+            var errorLogRepo = new PgErrorLogRepository(dataContextFactory);     
+            var changeLogRepo = new PgChangeLogRepository(dataContextFactory);   
+            var contentRepo = new PgContentItemRepository(dataContextFactory);  
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
 
+            // 4. NotificationService
+            var notificationService = new NotificationService(
+                notificationRepo,
+                dailyGoalRepo); 
+
+            // 5. Сервисы
             var userService = new UserService(userRepo);
-            var bmiService = new BmiService(notificationRepo);
+            var bmiService = new BmiService(bmiRepo);  
             var activityService = new ActivityService(activityRepo);
             var nutritionService = new NutritionService(nutritionRepo);
-            var reportService = new ReportService(activityService, nutritionService);
+            var reportService = new ReportService(nutritionRepo, activityRepo, dailyGoalRepo);
+            var adminStatsRepo = new PgAdminStatsRepository(dataContextFactory);
+            var adminStatsService = new AdminStatsService(adminStatsRepo);
+            var chartService = new ChartService();
+            var chartDataService = new ChartDataService(nutritionRepo, activityRepo);
+            var chartImageService = new ChartImageService();
+
+            // Google Fit
+            var httpClient = new HttpClient();
+            var googleClientId = configuration["GoogleFit:ClientId"];
+            var googleClientSecret = configuration["GoogleFit:ClientSecret"];
+            var googleFitClient = new GoogleFitClient(httpClient, googleClientId, googleClientSecret);
+
+            // NutriVision
+            var logMealToken = configuration["LogMeal:ApiToken"]
+                ?? throw new InvalidOperationException("LogMeal:ApiToken not found");
+            var logMealClient = new LogMealClient(httpClient, logMealToken);
 
             var contextRepository = new InMemoryScenarioContextRepository();
 
-            // сценарии
+            // 6. Сценарии
             var scenarios = new IScenario[]
             {
-    new BmiScenario(bmiService),
-    new CustomCaloriesScenario(nutritionService, userService),
-    new MealTimeSetupScenario(userService),
+            new BmiScenario(bmiService),
+            new CustomCaloriesScenario(nutritionService, userService),
+            new MealTimeSetupScenario(userService),
+            new RegistrationScenario(userService, bmiService),
+            new EditProfileScenario(userService, bmiService),
+            new SetDailyGoalScenario(dailyGoalRepo),
+            new ActivityReminderSettingsScenario(userService),
+            new AddMealScenario(nutritionService),
+            new ConnectGoogleFitScenario(userService),
+            new EditProfileAgeScenario(userService),
+            new EditProfileCityScenario(userService),
+            new EditProfileHeightWeightScenario(bmiService),
+            new PhotoMealGramsScenario (nutritionService,userService)
             };
 
-            // 5. Background Tasks
-            var backgroundRunner = new BackgroundTaskRunner();
-            backgroundRunner.AddTask(new MealReminderBackgroundTask(userService, nutritionService, notificationService));
-
-            // 6. Telegram bot + UpdateHandler
+            // 7. Telegram bot
             var botClient = new TelegramBotClient(botToken);
+
+            // 8. Command Handlers
+            var commandHandlers = new ICommandHandler[]
+            {
+                new ChartsCommandsHandler(
+                    chartService, 
+                    chartDataService, 
+                    chartImageService
+                    ),
+                new UserCommandsHandler(
+                    bmiService,
+                    nutritionRepo,
+                    activityService,
+                    reportService,
+                    contextRepository,
+                    scenarios
+                    ),            
+                new AdminCommandsHandler(
+                    userService,
+                    adminStatsService,
+                    errorLogRepo,
+                    contentRepo,
+                    changeLogRepo
+                    ),
+            };
+
+            // 9. Callback Handlers
+            var customCaloriesCallbackHandler = new CustomCaloriesCallbackHandler(
+                contextRepository, scenarios);
+            var callbackHandlers = new ICallbackHandler[]
+            {
+            new AdminCallbackHandler(userService),
+            new MealCallbackHandler(userService, nutritionRepo, contextRepository),
+            new ActivityReminderCallbackHandler(userService),
+            new ChartCallbackHandler(chartService, chartDataService, chartImageService),
+            new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
+            new ProfileCallbackHandler(userService, bmiService, contextRepository),
+            new BmiCallbackHandler(contextRepository),
+            customCaloriesCallbackHandler
+            };
+            
+            var photoHandlers = new IPhotoHandler[]
+            {
+                new FoodPhotoHandler(logMealClient, nutritionService,  
+                    userService,contextRepository,fileBaseUrl)
+            };
+
+            // 10. UpdateHandler 
             var updateHandler = new UpdateHandler(
                 botClient,
                 userService,
-                bmiService,
-                activityService,
-                nutritionService,
-                reportService,
                 contextRepository,
                 scenarios,
-                nutritionRepo,
-                activityRepo);
+                commandHandlers,
+                callbackHandlers,
+                errorLogRepo,
+                logMealClient,
+                photoHandlers); 
 
             var receiverOptions = new ReceiverOptions
             {
@@ -80,24 +162,68 @@ namespace FitnessBot
 
             var cts = new CancellationTokenSource();
 
-            // запускаем фоновые задачи
-            backgroundRunner.StartTasks(cts.Token);
+            // 11. Background Tasks
+            using var backgroundRunner = new BackgroundTaskRunner();
 
-            // запускаем бота
-            botClient.StartReceiving(
-                updateHandler,
-                receiverOptions,
-                cts.Token);
+            backgroundRunner.AddTask(new MealReminderBackgroundTask(
+                userService,
+                nutritionService,
+                notificationService));
 
-            var me = await botClient.GetMe();
-            Console.WriteLine($"Бот {me.FirstName} запущен. Нажмите Enter для остановки.");
+            backgroundRunner.AddTask(new DailyGoalCheckBackgroundTask(
+                userService,
+                activityRepo,
+                nutritionRepo,
+                dailyGoalRepo,
+                notificationService));
 
-            Console.ReadLine();
-            cts.Cancel();
+            backgroundRunner.AddTask(new NotificationSenderBackgroundTask(
+                botClient,
+                notificationService,
+                userService));
 
-            // корректно останавливаем фоновые задачи
-            await backgroundRunner.StopTasks(CancellationToken.None);
+            backgroundRunner.AddTask(new GoogleFitSyncBackgroundTask(
+                userService,
+                activityRepo,
+                googleFitClient));
 
+            backgroundRunner.AddTask(new ActivityReminderBackgroundTask(
+                userService,
+                activityRepo,
+                dailyGoalRepo,
+                notificationService));
+
+            // 12. Graceful shutdown
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                e.Cancel = true;
+                cts.Cancel();
+                Console.WriteLine("\nПолучен сигнал остановки. Завершение работы...");
+            };
+
+            try
+            {
+                backgroundRunner.StartTasks(cts.Token);
+
+                botClient.StartReceiving(
+                    updateHandler,
+                    receiverOptions,
+                    cts.Token);
+
+                var me = await botClient.GetMe();
+                Console.WriteLine($"Бот {me.FirstName} запущен. Нажмите Ctrl+C для остановки.");
+
+                await Task.Delay(Timeout.Infinite, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Остановка бота...");
+            }
+            finally
+            {
+                await backgroundRunner.StopTasks(CancellationToken.None);
+                Console.WriteLine("Бот остановлен.");
+            }
         }
     }
 }

@@ -1,17 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Infrastructure.DataAccess;
+using Telegram.Bot.Types;
+using User = FitnessBot.Core.Entities.User;
 
 namespace FitnessBot.Core.Services
 {
     public class UserService
     {
         private readonly IUserRepository _users;
+        private readonly IUserRepository _userRepository;
 
         public UserService(IUserRepository users)
         {
@@ -42,7 +40,57 @@ namespace FitnessBot.Core.Services
         }
 
         public Task<IReadOnlyList<User>> GetAllAsync() => _users.GetAllAsync();
+        
+        
 
         public Task<User> SaveAsync(User user) => _users.SaveAsync(user);
+
+        public async Task<bool> MakeAdminAsync(long telegramId)
+        {
+            var user = await _users.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+                return false;
+
+            user.Role = UserRole.Admin;
+            await _users.SaveAsync(user);
+            return true;
+        }
+
+        public async Task<bool> MakeUserAsync(long telegramId)
+        {
+            var user = await _users.GetByTelegramIdAsync(telegramId);
+            if (user == null)
+                return false;
+
+            user.Role = UserRole.User;
+            await _users.SaveAsync(user);
+            return true;
+        }
+
+        public Task<IReadOnlyList<User>> FindByNameAsync(string namePart) =>
+                _users.FindByNameAsync(namePart);
+
+        public Task<User?> GetByIdAsync(long id) => _users.GetByIdAsync(id);
+
+        public async Task SaveGoogleFitTokensAsync(
+        long userId,
+        string accessToken,
+        string refreshToken,
+        DateTime expiresAtUtc)
+        {
+            var user = await _users.GetByIdAsync(userId);
+            if (user == null) return;
+
+            user.GoogleFitAccessToken = accessToken;
+            user.GoogleFitRefreshToken = refreshToken;
+            user.GoogleFitTokenExpiresAt = expiresAtUtc;
+
+            await _users.SaveAsync(user);
+        }
+
+        public async Task UpdateAsync(User user)
+        {
+            await _userRepository.UpdateAsync(user);
+        }
     }
 }

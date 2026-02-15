@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FitnessBot.Core.Abstractions;
-using FitnessBot.Core.Entities;
-using LinqToDB.Async;
-using LinqToDB;
-using LinqToDB.Data;
+﻿using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.DataAccess.Models;
+using FitnessBot.Core.Entities;
+using LinqToDB;
+using LinqToDB.Async;
 
 namespace FitnessBot.Infrastructure.DataAccess
 {
@@ -21,7 +15,6 @@ namespace FitnessBot.Infrastructure.DataAccess
             _connectionFactory = connectionFactory;
         }
 
-        // маппинг Activity <-> ActivityModel
         private static ActivityModel Map(Activity a) => new()
         {
             Id = a.Id,
@@ -52,7 +45,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             activity.Id = model.Id;
         }
 
-        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, DateTime from, DateTime to)
+        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, 
+                DateTime from, DateTime to)
         {
             await using var db = _connectionFactory();
             var models = await db.Activities
@@ -60,9 +54,31 @@ namespace FitnessBot.Infrastructure.DataAccess
                             a.Date >= from.Date &&
                             a.Date < to.Date)
                 .OrderBy(a => a.Date)
-                .ToListAsync(); // List<ActivityModel>
+                .ToListAsync();
 
-            return models.Select(Map).ToList(); // List<Activity> -> IReadOnlyList<Activity>
+            return models.Select(Map).ToList();
+        }
+
+        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId, 
+                DateTime dateUtc, string source, CancellationToken ct)
+        {
+            var day = dateUtc.Date;
+
+            await using var db = _connectionFactory();
+            var model = await db.Activities
+                .Where(a => a.UserId == userId
+                            && a.Date == day
+                            && a.Source == source)
+                .FirstOrDefaultAsync(ct);
+
+            return model is null ? null : Map(model);
+        }
+
+        public async Task UpdateAsync(Activity activity, CancellationToken ct)
+        {
+            await using var db = _connectionFactory();
+            var model = Map(activity);
+            await db.UpdateAsync(model, token: ct);
         }
     }
 }
