@@ -116,24 +116,27 @@ namespace FitnessBot.TelegramBot.Handlers
                 return;
             }
 
-            var context = new ScenarioContext
+            var scenarioContext = new ScenarioContext
             {
                 UserId = user.Id,
                 CurrentScenario = ScenarioType.CustomCalories,
-                CurrentStep = 0
+                CurrentStep = 1
             };
 
-            await _contextRepository.SetContext(user.Id, context, default);
+            await _contextRepository.SetContext(user.Id, scenarioContext, default);
 
+            // ответ на callback, чтобы убрать "часики"
             await ctx.Bot.AnswerCallbackQuery(ctx.CallbackQuery!.Id, cancellationToken: default);
 
+            // НОВОЕ: сразу просим ввести калории
             if (ctx.CallbackQuery!.Message != null)
             {
                 await ctx.Bot.SendMessage(
                     ctx.CallbackQuery.Message.Chat.Id,
-                    "Введите количество калорий.",
+                    "Введите количество калорий положительным числом, например: 350.",
                     cancellationToken: default);
             }
         }
+
     }
 }

@@ -3,6 +3,7 @@ using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FitnessBot.Scenarios
 {
@@ -35,15 +36,11 @@ namespace FitnessBot.Scenarios
                 // Шаг 0 — запрос калорий
                 case 0:
                     {
-                        await bot.SendMessage(
-                            chatId,
-                            "Введите количество калорий положительным числом, например: 350.",
-                            cancellationToken: ct);
                         context.CurrentStep = 1;
                         return ScenarioResult.InProgress;
                     }
 
-                // Шаг 1 — парсим калории и спрашиваем, хотим ли БЖУ
+                // Шаг 1 — парсим калории и спрашиваем про БЖУ
                 case 1:
                     {
                         if (!double.TryParse(
@@ -61,43 +58,67 @@ namespace FitnessBot.Scenarios
 
                         context.Data["calories"] = calories;
 
+                        var keyboard = new ReplyKeyboardMarkup(
+                            new[]
+                            {
+            new KeyboardButton[] { new KeyboardButton("Да"), new KeyboardButton("Нет") }
+                            })
+                        {
+                            ResizeKeyboard = true,
+                            OneTimeKeyboard = true
+                        };
+
                         await bot.SendMessage(
                             chatId,
-                            "Хотите указать белки, жиры и углеводы?\n" +
-                            "Ответьте `да` или `нет`.",
+                            "Хотите указать белки, жиры и углеводы?\nВыберите «Да» или «Нет» ниже.",
+                            replyMarkup: keyboard,
                             cancellationToken: ct);
 
                         context.CurrentStep = 2;
                         return ScenarioResult.InProgress;
                     }
 
+
                 // Шаг 2 — ответ «да/нет»
                 case 2:
                     {
-                        if (text.Equals("да", StringComparison.OrdinalIgnoreCase))
+                        if (text.Equals("Да", StringComparison.OrdinalIgnoreCase))
                         {
+                            // убираем клавиатуру
+                            var remove = new ReplyKeyboardRemove();
+
                             await bot.SendMessage(
                                 chatId,
                                 "Введите количество белков (в граммах), например: 30.",
+                                replyMarkup: remove,
                                 cancellationToken: ct);
 
                             context.CurrentStep = 3;
                             return ScenarioResult.InProgress;
                         }
 
-                        if (!text.Equals("нет", StringComparison.OrdinalIgnoreCase))
+                        if (text.Equals("Нет", StringComparison.OrdinalIgnoreCase))
                         {
+                            var remove = new ReplyKeyboardRemove();
+
+                            // убираем клавиатуру и сразу сохраняем
                             await bot.SendMessage(
                                 chatId,
-                                "Ответьте `да` или `нет`.",
+                                "Ок, сохраняю только калории.",
+                                replyMarkup: remove,
                                 cancellationToken: ct);
-                            return ScenarioResult.InProgress;
+
+                            return await SaveMealAndFinish(bot, context, message, ct,
+                                protein: 0, fat: 0, carbs: 0);
                         }
 
-                        // пользователь не хочет БЖУ — сохраняем только калории
-                        return await SaveMealAndFinish(bot, context, message, ct, 
-                            protein: 0, fat: 0, carbs: 0);
+                        await bot.SendMessage(
+                            chatId,
+                            "Пожалуйста, нажмите кнопку «Да» или «Нет».",
+                            cancellationToken: ct);
+                        return ScenarioResult.InProgress;
                     }
+
 
                 // Шаг 3 — белки
                 case 3:
@@ -184,13 +205,13 @@ namespace FitnessBot.Scenarios
         }
 
         private async Task<ScenarioResult> SaveMealAndFinish(
-            ITelegramBotClient bot,
-            ScenarioContext context,
-            Message message,
-            CancellationToken ct,
-            double protein,
-            double fat,
-            double carbs)
+    ITelegramBotClient bot,
+    ScenarioContext context,
+    Message message,
+    CancellationToken ct,
+    double protein,
+    double fat,
+    double carbs)
         {
             var chatId = message.Chat.Id;
 
@@ -204,19 +225,10 @@ namespace FitnessBot.Scenarios
                 return ScenarioResult.Completed;
             }
 
-            var user = await _userService.GetByTelegramIdAsync(message.From!.Id);
-            if (user == null)
-            {
-                await bot.SendMessage(
-                    chatId,
-                    "Пользователь не найден.",
-                    cancellationToken: ct);
-                return ScenarioResult.Completed;
-            }
-
+            // Используем UserId из контекста, не ищем по message.From
             var meal = new Meal
             {
-                UserId = user.Id,
+                UserId = context.UserId,
                 DateTime = DateTime.UtcNow,
                 MealType = "snack",
                 Calories = calories,
