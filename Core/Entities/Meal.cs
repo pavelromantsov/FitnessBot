@@ -11,5 +11,7 @@
         public double Fat { get; set; }
         public double Carbs { get; set; }
         public string? PhotoUrl { get; set; }
+        public string? DishName { get; set; }
+        public virtual User User { get; set; }
     }
 }

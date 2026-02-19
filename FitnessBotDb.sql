@@ -205,3 +205,18 @@ create index if not exists idx_notifications_user_scheduled
 -- ============================================
 
     ALTER TABLE error_logs ADD COLUMN user_id BIGINT;
+
+-- =============================================
+-- Alter table: error_logs (add user_id)
+-- ============================================
+
+ALTER TABLE meals 
+ADD COLUMN dish_name VARCHAR(255) NULL;
+
+-- =============================================
+-- INDEX IX_meals_dish_name, IX_meals_user_dish
+-- ============================================
+
+CREATE INDEX IX_meals_dish_name ON meals(dish_name);
+
+CREATE INDEX IX_meals_user_dish ON meals(user_id, dish_name);

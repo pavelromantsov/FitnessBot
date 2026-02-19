@@ -34,8 +34,6 @@ namespace FitnessBot.Scenarios
 
             switch (context.CurrentStep)
             {
-                // Шаг 0 — пропускаем
-                // Шаг 1 — парсим граммы, считаем и сохраняем приём пищи
                 case 1:
                     {
                         if (!double.TryParse(
@@ -51,7 +49,6 @@ namespace FitnessBot.Scenarios
                             return ScenarioResult.InProgress;
                         }
 
-                        // забираем данные, которые положил FoodPhotoHandler
                         if (!context.Data.TryGetValue("serving_size", out var servingObj) ||
                             !context.Data.TryGetValue("base_calories", out var calObj) ||
                             !context.Data.TryGetValue("base_protein", out var protObj) ||
@@ -76,6 +73,10 @@ namespace FitnessBot.Scenarios
                         var baseFat = Convert.ToDouble(fatObj, CultureInfo.InvariantCulture);
                         var baseCarbs = Convert.ToDouble(carbObj, CultureInfo.InvariantCulture);
                         var photoUrl = photoObj as string;
+
+                        var dishName = context.Data.TryGetValue("dish_name", out var dishObj)
+                            ? dishObj as string
+                            : "Неизвестное блюдо";
 
                         var ratio = grams / servingSize;
 
@@ -103,17 +104,20 @@ namespace FitnessBot.Scenarios
                             Protein = protein,
                             Fat = fat,
                             Carbs = carbs,
-                            PhotoUrl = photoUrl
+                            PhotoUrl = photoUrl,
+                            DishName = dishName  
                         };
 
                         await _nutritionService.AddMealAsync(meal, ct);
 
                         await bot.SendMessage(
                             chatId,
-                            $"🍽 Записал приём пищи.\n" +
-                            $"Вес: {grams:F0} г\n" +
-                            $"Калории: {calories:F0}\n" +
-                            $"Б: {protein:F0} г, Ж: {fat:F0} г, У: {carbs:F0} г",
+                            $"🍽️ Записал приём пищи.\n\n" +
+                            $"📛 *Блюдо:* {dishName}\n" +
+                            $"⚖️ Вес: {grams:F0} г\n" +
+                            $"🔥 Калории: {calories:F0}\n" +
+                            $"🥩 Б: {protein:F0} г, Ж: {fat:F0} г, У: {carbs:F0} г",
+                            parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                             cancellationToken: ct);
 
                         return ScenarioResult.Completed;

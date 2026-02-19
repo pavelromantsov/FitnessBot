@@ -25,7 +25,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             Protein = m.Protein,
             Fat = m.Fat,
             Carbs = m.Carbs,
-            PhotoUrl = m.PhotoUrl
+            PhotoUrl = m.PhotoUrl,
+            DishName = m.DishName  
         };
 
         private static Meal Map(MealModel m) => new()
@@ -38,7 +39,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             Protein = m.Protein,
             Fat = m.Fat,
             Carbs = m.Carbs,
-            PhotoUrl = m.PhotoUrl
+            PhotoUrl = m.PhotoUrl,
+            DishName = m.DishName  
         };
 
         public async Task AddAsync(Meal meal)
@@ -49,7 +51,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             meal.Id = model.Id;
         }
 
-        public async Task<IReadOnlyList<Meal>> GetByUserAndPeriodAsync(long userId, DateTime from, DateTime to)
+        public async Task<IReadOnlyList<Meal>> GetByUserAndPeriodAsync(
+            long userId, DateTime from, DateTime to)
         {
             await using var db = _connectionFactory();
             var models = await db.Meals
@@ -57,9 +60,9 @@ namespace FitnessBot.Infrastructure.DataAccess
                             m.DateTime >= from &&
                             m.DateTime < to)
                 .OrderBy(m => m.DateTime)
-                .ToListAsync(); 
+                .ToListAsync();
 
-            return models.Select(Map).ToList(); 
+            return models.Select(Map).ToList();
         }
     }
 }
