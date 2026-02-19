@@ -39,14 +39,10 @@ namespace FitnessBot.TelegramBot.Handlers
             var chatId = context.ChatId;
             var user = context.User;
 
-            // Самое большое фото
             var photo = message.Photo.OrderByDescending(p => p.FileSize).First();
-
-            // Получаем файл на серверах Telegram
             var file = await bot.GetFile(photo.FileId, cancellationToken: ct);
             var fileUrl = $"{_fileBaseUrl}{file.FilePath}";
 
-            // Скачиваем в память для LogMeal
             await using var ms = new MemoryStream();
             await bot.DownloadFile(file.FilePath!, ms, cancellationToken: ct);
             ms.Position = 0;
@@ -66,13 +62,13 @@ namespace FitnessBot.TelegramBot.Handlers
                 Console.WriteLine($"LogMeal segmentation error: {ex}");
                 await bot.SendMessage(
                     chatId,
-                    "Не удалось распознать блюдо по фото 😔 " +
+                    "Не удалось распознать блюдо по фото 😔\n" +
                     "Попробуйте позже или введите калории вручную.",
                     cancellationToken: ct);
                 return true;
             }
 
-            if (segResult == null)
+            if (segResult == null || segResult.ImageId == 0)
             {
                 await bot.SendMessage(
                     chatId,
@@ -91,19 +87,33 @@ namespace FitnessBot.TelegramBot.Handlers
                 Console.WriteLine($"LogMeal nutrition error: {ex}");
                 await bot.SendMessage(
                     chatId,
-                    "Удалось распознать блюдо, но сервис не вернул калории и БЖУ. " +
+                    "Удалось распознать блюдо, но сервис не вернул калории и БЖУ.\n" +
                     "Вы можете добавить приём пищи вручную командой /addmeal.",
                     cancellationToken: ct);
                 return true;
             }
 
-            if (nutriResult == null || !nutriResult.HasNutritionalInfo)
+            if (nutriResult == null)
             {
                 await SendNoNutritionKeyboard(bot, chatId, ct);
                 return true;
             }
 
+            // 🆕 Извлекаем данные с учётом новой структуры ответа
             var info = MapToSimple(nutriResult.Nutritional_Info);
+
+            // 🆕 Если Nutritional_Info пустой, пробуем взять из nutritional_info_per_item
+            if (info.EnergyKcal <= 0 && nutriResult.Nutritional_Info_Per_Item?.Count > 0)
+            {
+                var firstItem = nutriResult.Nutritional_Info_Per_Item[0];
+                info = MapToSimple(firstItem.Nutritional_Info);
+            }
+
+            // 🆕 Если всё ещё 0, пробуем взять calories из корневого уровня
+            if (info.EnergyKcal <= 0 && nutriResult.Calories.HasValue)
+            {
+                info.EnergyKcal = nutriResult.Calories.Value;
+            }
 
             if (info.EnergyKcal <= 0)
             {
@@ -113,9 +123,24 @@ namespace FitnessBot.TelegramBot.Handlers
 
             var serving = nutriResult.Serving_Size;
             if (serving <= 0)
-                serving = 100; 
+            {
+                // 🆕 Пробуем взять serving_size из первого элемента nutritional_info_per_item
+                if (nutriResult.Nutritional_Info_Per_Item?.Count > 0)
+                {
+                    serving = nutriResult.Nutritional_Info_Per_Item[0].Serving_Size;
+                }
+                else
+                {
+                    serving = 100;
+                }
+            }
 
-            // Создаём сценарий PhotoMealGrams и кладём базовые данные
+            // 🆕 Извлекаем название блюда из массива foodName
+            var dishName = nutriResult.FoodName?.FirstOrDefault()
+                        ?? segResult.Recognition_Results?.FirstOrDefault()?.Name
+                        ?? "Неизвестное блюдо";
+
+            // Создаём сценарий PhotoMealGrams
             var scenarioContext = new ScenarioContext
             {
                 UserId = user.Id,
@@ -129,15 +154,18 @@ namespace FitnessBot.TelegramBot.Handlers
             scenarioContext.Data["base_fat"] = info.Fats;
             scenarioContext.Data["base_carbs"] = info.Carbs;
             scenarioContext.Data["photo_url"] = fileUrl;
+            scenarioContext.Data["dish_name"] = dishName;  // 🆕 Сохраняем название
 
             await _contextRepository.SetContext(user.Id, scenarioContext, ct);
 
+            // 🆕 Показываем название блюда пользователю
             await bot.SendMessage(
                 chatId,
-                $"Фото распознано.\n" +
-                $"По данным LogMeal это ~{serving:F0} г: {info.EnergyKcal:F0} ккал, " +
+                $"🍽️ *Распознано:* {dishName}\n\n" +
+                $"По данным LogMeal это ~{serving:F0} г: {info.EnergyKcal:F0} ккал,  " +
                 $"Б {info.Proteins:F1} г, Ж {info.Fats:F1} г, У {info.Carbs:F1} г.\n\n" +
-                "Сколько граммов ты съел? Введи число, например 120.",
+                $"Сколько граммов ты съел? Введи число, например 120.",
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: ct);
 
             return true;
@@ -168,8 +196,11 @@ namespace FitnessBot.TelegramBot.Handlers
                 cancellationToken: ct);
         }
 
-        private static NutritionalInfo MapToSimple(NutritionalInfoRaw raw)
+        private static NutritionalInfo MapToSimple(NutritionalInfoRaw? raw)
         {
+            if (raw?.TotalNutrients == null)
+                return new NutritionalInfo();
+
             double Get(string code) =>
                 raw.TotalNutrients.TryGetValue(code, out var v) ? v.Quantity : 0.0;
 

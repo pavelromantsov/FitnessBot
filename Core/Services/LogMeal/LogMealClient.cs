@@ -27,7 +27,7 @@ namespace FitnessBot.Core.Services.LogMeal
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "https://api.logmeal.es/v2/image/segmentation/complete"); // твой разрешённый метод[web:455]
+                "https://api.logmeal.es/v2/image/segmentation/complete");  
 
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", apiToken);
@@ -40,7 +40,8 @@ namespace FitnessBot.Core.Services.LogMeal
             Console.WriteLine($"LogMeal segmentation status: {(int)response.StatusCode}, body: {body}");
 
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"LogMeal segmentation error {(int)response.StatusCode}: {body}");
+                throw new InvalidOperationException(
+                    $"LogMeal segmentation error {(int)response.StatusCode}: {body}");
 
             return JsonSerializer.Deserialize<LogMealSegmentationResult>(body,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -57,7 +58,7 @@ namespace FitnessBot.Core.Services.LogMeal
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "https://api.logmeal.com/v2/nutrition/recipe/nutritionalInfo");
+                "https://api.logmeal.es/v2/nutrition/recipe/nutritionalInfo");  
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", apiToken);
             request.Content = content;
@@ -68,12 +69,44 @@ namespace FitnessBot.Core.Services.LogMeal
             Console.WriteLine($"LogMeal nutrition status: {(int)response.StatusCode}, body: {body}");
 
             if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"LogMeal nutrition error {(int)response.StatusCode}: {body}");
+                throw new InvalidOperationException(
+                    $"LogMeal nutrition error {(int)response.StatusCode}: {body}");
 
             return JsonSerializer.Deserialize<LogMealNutritionResult>(
                 body,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
 
+        public async Task<LogMealIngredientsResult?> GetIngredientsAsync(
+            long imageId,
+            CancellationToken ct = default)
+        {
+            var payload = new { imageId };
+
+            var json = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "https://api.logmeal.es/v2/nutrition/recipe/ingredients");  
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", apiToken);
+            request.Content = content;
+
+            using var response = await http.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            Console.WriteLine($"LogMeal ingredients status: {(int)response.StatusCode}, body: {body}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"LogMeal ingredients error: {(int)response.StatusCode}");
+                return null;              }
+
+            return JsonSerializer.Deserialize<LogMealIngredientsResult>(
+                body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
     }
 }

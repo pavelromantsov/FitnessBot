@@ -32,5 +32,8 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("photo_url"), Nullable]
         public string? PhotoUrl { get; set; }
+        
+        [Column("dish_name"), Nullable]
+        public string? DishName { get; set; }
     }
 }
