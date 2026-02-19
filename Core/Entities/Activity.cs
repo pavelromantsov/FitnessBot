@@ -8,6 +8,8 @@
         public int Steps { get; set; }
         public int ActiveMinutes { get; set; }
         public double CaloriesBurned { get; set; }
-        public string Source { get; set; } = "manual"; 
+        public string Source { get; set; } = "manual";
+        public ActivityType Type { get; set; } = ActivityType.StepsBased;
+        public string? Name { get; set; }
     }
 }

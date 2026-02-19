@@ -23,7 +23,8 @@ namespace FitnessBot.Infrastructure.DataAccess
             Steps = a.Steps,
             ActiveMinutes = a.ActiveMinutes,
             CaloriesBurned = a.CaloriesBurned,
-            Source = a.Source
+            Source = a.Source,
+            Type = (int)a.Type  
         };
 
         private static Activity Map(ActivityModel m) => new()
@@ -34,18 +35,43 @@ namespace FitnessBot.Infrastructure.DataAccess
             Steps = m.Steps,
             ActiveMinutes = m.ActiveMinutes,
             CaloriesBurned = m.CaloriesBurned,
-            Source = m.Source
+            Source = m.Source,
+            Type = (ActivityType)m.Type  
         };
 
         public async Task AddAsync(Activity activity)
         {
             await using var db = _connectionFactory();
+
+            // 1. Проверяем, есть ли уже запись
+            var existing = await db.Activities
+                .FirstOrDefaultAsync(a =>
+                    a.UserId == activity.UserId &&
+                    a.Date == activity.Date.Date &&
+                    a.Source == activity.Source);
+
             var model = Map(activity);
-            model.Id = await db.InsertWithInt64IdentityAsync(model);
-            activity.Id = model.Id;
+
+            if (existing != null)
+            {
+                // 2. Если есть — обновляем (суммируем значения)
+                existing.Steps += model.Steps;
+                existing.ActiveMinutes += model.ActiveMinutes;
+                existing.CaloriesBurned += model.CaloriesBurned;
+                existing.Type = model.Type; // берём новый тип
+
+                await db.UpdateAsync(existing);
+                activity.Id = existing.Id;
+            }
+            else
+            {
+                // 3. Если нет — вставляем новую
+                model.Id = await db.InsertWithInt64IdentityAsync(model);
+                activity.Id = model.Id;
+            }
         }
 
-        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId, 
+        public async Task<IReadOnlyList<Activity>> GetByUserAndPeriodAsync(long userId,
                 DateTime from, DateTime to)
         {
             await using var db = _connectionFactory();
@@ -59,7 +85,7 @@ namespace FitnessBot.Infrastructure.DataAccess
             return models.Select(Map).ToList();
         }
 
-        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId, 
+        public async Task<Activity?> GetByUserDateAndSourceAsync(long userId,
                 DateTime dateUtc, string source, CancellationToken ct)
         {
             var day = dateUtc.Date;

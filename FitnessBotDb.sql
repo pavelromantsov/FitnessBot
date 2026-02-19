@@ -220,3 +220,11 @@ ADD COLUMN dish_name VARCHAR(255) NULL;
 CREATE INDEX IX_meals_dish_name ON meals(dish_name);
 
 CREATE INDEX IX_meals_user_dish ON meals(user_id, dish_name);
+
+-- =============================================
+-- Alter table: activities (add activity_type)
+-- ============================================
+
+ALTER TABLE activities 
+    ADD COLUMN IF NOT EXISTS activity_type INTEGER NOT NULL DEFAULT 0;
+UPDATE activities SET activity_type = 0 WHERE activity_type IS NULL;
