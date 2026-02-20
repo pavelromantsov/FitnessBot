@@ -59,7 +59,7 @@ namespace FitnessBot.TelegramBot.Handlers
 
             if (normalizedCommand.Contains("добавить активность") || normalizedCommand == "/addactivity")
             {
-                await StartManualActivityScenario(context); // твой метод запуска ManualActivityScenario
+                await StartManualActivityScenario(context); 
                 return true;
             }
 
@@ -390,20 +390,6 @@ namespace FitnessBot.TelegramBot.Handlers
             
             var burnedCalories = totals.caloriesOut;
             var steps = totals.steps;
-            
-            
-            //ОТЛАДКА
-            
-            var activities = await _activityService.GetMergedForPeriodAsync(userId, today, tomorrow);
-
-            Console.WriteLine($"[DEBUG] TodayCommand: found {activities.Count} activity records");
-            foreach (var a in activities)
-            {
-                Console.WriteLine($"  - Date={a.Date}, Steps={a.Steps}, Calories={a.CaloriesBurned}, Source={a.Source}, Type={a.Type}");
-            }
-            
-            
-            
             var netCalories = eatenCalories - burnedCalories;
             var balanceEmoji = netCalories > 0 ? "📈" : netCalories < 0 ? "📉" : "➡️";
 
@@ -544,7 +530,7 @@ namespace FitnessBot.TelegramBot.Handlers
             var firstDay = new DateTime(year, month, 1);
             var daysInMonth = DateTime.DaysInMonth(year, month);
             var startDayOfWeek = (int)firstDay.DayOfWeek;
-            if (startDayOfWeek == 0) startDayOfWeek = 7; // Воскресенье = 7
+            if (startDayOfWeek == 0) startDayOfWeek = 7; 
 
             var buttons = new List<InlineKeyboardButton[]>();
 

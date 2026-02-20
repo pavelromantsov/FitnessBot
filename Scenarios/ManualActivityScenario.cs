@@ -30,7 +30,7 @@ namespace FitnessBot.Scenarios
 
             switch (context.CurrentStep)
             {
-                // 🔹 Шаг 0: показываем кнопки выбора типа
+                // показываем кнопки выбора типа
                 case 0:
                     {
                         var keyboard = new InlineKeyboardMarkup(new[]
@@ -54,7 +54,7 @@ namespace FitnessBot.Scenarios
                         return ScenarioResult.InProgress;
                     }
 
-                // 🔹 Шаг 1: ввод минут (activityType уже сохранён callback-хендлером)
+                // ввод минут (activityType уже сохранён callback-хендлером)
                 case 1:
                     {
                         if (!int.TryParse(text, out var minutes) || minutes <= 0)
@@ -93,7 +93,7 @@ namespace FitnessBot.Scenarios
                         return ScenarioResult.InProgress;
                     }
 
-                // 🔹 Шаг 2: ввод шагов (только для steps-based)
+                // ввод шагов (только для steps-based)
                 case 2:
                     {
                         if (!int.TryParse(text, out var stepsValue) || stepsValue < 0)
@@ -116,7 +116,7 @@ namespace FitnessBot.Scenarios
                         return ScenarioResult.InProgress;
                     }
 
-                // 🔹 Шаг 3: ввод калорий и сохранение
+                // ввод калорий и сохранение
                 case 3:
                     {
                         if (!double.TryParse(

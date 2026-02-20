@@ -58,7 +58,7 @@ namespace FitnessBot.Infrastructure.DataAccess
                 existing.Steps += model.Steps;
                 existing.ActiveMinutes += model.ActiveMinutes;
                 existing.CaloriesBurned += model.CaloriesBurned;
-                existing.Type = model.Type; // берём новый тип
+                existing.Type = model.Type; 
 
                 await db.UpdateAsync(existing);
                 activity.Id = existing.Id;

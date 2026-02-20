@@ -21,7 +21,6 @@ namespace FitnessBot.TelegramBot
         private readonly IErrorLogRepository _errorLogRepo;
         private readonly LogMealClient _logMealClient;
 
-        // Handlers
         private readonly ICommandHandler[] _commandHandlers;
         private readonly ICallbackHandler[] _callbackHandlers;
         private readonly IEnumerable<IPhotoHandler> _photoHandlers;

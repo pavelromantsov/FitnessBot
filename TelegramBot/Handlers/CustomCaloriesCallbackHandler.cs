@@ -49,7 +49,8 @@ namespace FitnessBot.TelegramBot.Handlers
                     "Введите количество белков (в граммах), например: 30.",
                     cancellationToken: ct);
             }
-            else // calories_macros_no
+            // calories_macros_no
+            else 
             {
                 // не хочет БЖУ — используем шаг 2 сценария, как будто он ввёл "нет" текстом
                 scenarioContext.CurrentStep = 2;

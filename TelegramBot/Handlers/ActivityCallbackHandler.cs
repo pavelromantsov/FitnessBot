@@ -19,14 +19,12 @@ namespace FitnessBot.TelegramBot.Handlers
             _contextRepository = contextRepository;
         }
 
-        // Сигнатура точно как в вашем интерфейсе (без CancellationToken в параметрах)
         public async Task<bool> HandleAsync(UpdateContext context, string callbackData)
         {
             if (!callbackData.StartsWith("act_type:"))
                 return false;
 
-            var type = callbackData.Split(':')[1]; // "steps" или "time"
-
+            var type = callbackData.Split(':')[1]; 
             var cb = context.CallbackQuery;
             if (cb == null)
                 return false;
@@ -44,7 +42,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 return false;
 
             scenarioContext.Data["activityType"] = type;
-            scenarioContext.CurrentStep = 1; // 👈 КРИТИЧНО: продвигаем сценарий на шаг 1!
+            scenarioContext.CurrentStep = 1;
 
             await _contextRepository.SetContext(
                 context.User.Id,
@@ -57,7 +55,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 $"✅ Выбрано: {(type == "steps" ? "👣 Шаги" : "🏋️ Тренировка")}",
                 cancellationToken: context.CancellationToken);
 
-            // 3. 👇 ГЛАВНОЕ: редактируем сообщение и просим ввести минуты
+            // 3. редактируем сообщение и просим ввести минуты
             await context.Bot.EditMessageText(
                 chatId: chatId,
                 messageId: messageId,
