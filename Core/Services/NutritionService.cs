@@ -14,7 +14,7 @@ namespace FitnessBot.Core.Services
 
         public Task AddMealAsync(long userId, DateTime at, string mealType,
             double calories, double protein, double fat, double carbs,
-            string? photoUrl, string? dishName = null)  // 🆕 Добавлен dishName
+            string? photoUrl, string? dishName = null) 
         {
             var meal = new Meal
             {
@@ -26,7 +26,7 @@ namespace FitnessBot.Core.Services
                 Fat = fat,
                 Carbs = carbs,
                 PhotoUrl = photoUrl,
-                DishName = dishName  // 🆕
+                DishName = dishName 
             };
 
             return _meals.AddAsync(meal);

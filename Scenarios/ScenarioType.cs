@@ -17,6 +17,7 @@
         EditProfileAge = 12,
         EditProfileCity = 13,
         EditProfileHeightWeight = 14,
-        PhotoMealGrams = 15
+        PhotoMealGrams = 15,
+        ManualActivity = 16
     }
 }

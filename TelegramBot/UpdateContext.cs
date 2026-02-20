@@ -6,6 +6,7 @@ namespace FitnessBot.TelegramBot
 {
     public sealed class UpdateContext
     {
+        internal readonly string Update;
         public ITelegramBotClient Bot { get; }
         public DomainUser User { get; }
         public long ChatId { get; }

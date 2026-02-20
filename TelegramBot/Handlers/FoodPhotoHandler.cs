@@ -99,17 +99,17 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            // 🆕 Извлекаем данные с учётом новой структуры ответа
+            // Извлекаем данные с учётом новой структуры ответа
             var info = MapToSimple(nutriResult.Nutritional_Info);
 
-            // 🆕 Если Nutritional_Info пустой, пробуем взять из nutritional_info_per_item
+            // Если Nutritional_Info пустой, пробуем взять из nutritional_info_per_item
             if (info.EnergyKcal <= 0 && nutriResult.Nutritional_Info_Per_Item?.Count > 0)
             {
                 var firstItem = nutriResult.Nutritional_Info_Per_Item[0];
                 info = MapToSimple(firstItem.Nutritional_Info);
             }
 
-            // 🆕 Если всё ещё 0, пробуем взять calories из корневого уровня
+            // Если всё ещё 0, пробуем взять calories из корневого уровня
             if (info.EnergyKcal <= 0 && nutriResult.Calories.HasValue)
             {
                 info.EnergyKcal = nutriResult.Calories.Value;
@@ -124,7 +124,7 @@ namespace FitnessBot.TelegramBot.Handlers
             var serving = nutriResult.Serving_Size;
             if (serving <= 0)
             {
-                // 🆕 Пробуем взять serving_size из первого элемента nutritional_info_per_item
+                // Пробуем взять serving_size из первого элемента nutritional_info_per_item
                 if (nutriResult.Nutritional_Info_Per_Item?.Count > 0)
                 {
                     serving = nutriResult.Nutritional_Info_Per_Item[0].Serving_Size;
@@ -135,7 +135,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 }
             }
 
-            // 🆕 Извлекаем название блюда из массива foodName
+            // Извлекаем название блюда из массива foodName
             var dishName = nutriResult.FoodName?.FirstOrDefault()
                         ?? segResult.Recognition_Results?.FirstOrDefault()?.Name
                         ?? "Неизвестное блюдо";
@@ -154,11 +154,11 @@ namespace FitnessBot.TelegramBot.Handlers
             scenarioContext.Data["base_fat"] = info.Fats;
             scenarioContext.Data["base_carbs"] = info.Carbs;
             scenarioContext.Data["photo_url"] = fileUrl;
-            scenarioContext.Data["dish_name"] = dishName;  // 🆕 Сохраняем название
+            scenarioContext.Data["dish_name"] = dishName;  
 
             await _contextRepository.SetContext(user.Id, scenarioContext, ct);
 
-            // 🆕 Показываем название блюда пользователю
+            // Показываем название блюда пользователю
             await bot.SendMessage(
                 chatId,
                 $"🍽️ *Распознано:* {dishName}\n\n" +
