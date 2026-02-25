@@ -25,5 +25,8 @@ namespace FitnessBot.Core.DataAccess.Models
 
         [Column("source"), NotNull]
         public string Source { get; set; } = "manual";
+        
+        [Column("activity_type"), NotNull]
+        public int Type { get; set; } = 0;
     }
 }

@@ -2,7 +2,6 @@
 {
     public class NutritionalInfoRaw
     {
-        public double Calories { get; set; }
         public Dictionary<string, NutrientValue> TotalNutrients { get; set; } = default!;
     }
 }

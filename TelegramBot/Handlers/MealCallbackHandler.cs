@@ -128,7 +128,7 @@ namespace FitnessBot.TelegramBot.Handlers
             // ответ на callback, чтобы убрать "часики"
             await ctx.Bot.AnswerCallbackQuery(ctx.CallbackQuery!.Id, cancellationToken: default);
 
-            // НОВОЕ: сразу просим ввести калории
+            // сразу просим ввести калории
             if (ctx.CallbackQuery!.Message != null)
             {
                 await ctx.Bot.SendMessage(

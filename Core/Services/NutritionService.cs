@@ -13,9 +13,9 @@ namespace FitnessBot.Core.Services
         }
 
         public Task AddMealAsync(long userId, DateTime at, string mealType,
-            double calories, double protein, double fat, double carbs, string? photoUrl)
+            double calories, double protein, double fat, double carbs,
+            string? photoUrl, string? dishName = null) 
         {
-            
             var meal = new Meal
             {
                 UserId = userId,
@@ -25,7 +25,8 @@ namespace FitnessBot.Core.Services
                 Protein = protein,
                 Fat = fat,
                 Carbs = carbs,
-                PhotoUrl = photoUrl
+                PhotoUrl = photoUrl,
+                DishName = dishName 
             };
 
             return _meals.AddAsync(meal);
@@ -46,6 +47,7 @@ namespace FitnessBot.Core.Services
                 meals.Sum(m => m.Carbs)
             );
         }
+
         public async Task AddMealAsync(Meal meal, CancellationToken ct = default)
         {
             if (meal.Calories < 0)

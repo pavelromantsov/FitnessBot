@@ -1,15 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FitnessBot.Core.Abstractions;
 using FitnessBot.Core.Entities;
 using FitnessBot.Core.Services;
 using FitnessBot.Scenarios;
 
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FitnessBot.TelegramBot.Handlers
@@ -43,9 +37,8 @@ namespace FitnessBot.TelegramBot.Handlers
         {
             var normalizedCommand = command.Trim().ToLowerInvariant();
 
-            Console.WriteLine($"DEBUG: '{normalizedCommand}'"); // Для отладки
+            Console.WriteLine($"DEBUG: '{normalizedCommand}'");
 
-            // Используем Contains для проверки ключевых слов
             if (normalizedCommand.Contains("помощь") || normalizedCommand == "/help")
             {
                 await HelpCommand(context);
@@ -55,6 +48,24 @@ namespace FitnessBot.TelegramBot.Handlers
             if (normalizedCommand.Contains("сегодня") || normalizedCommand == "/today")
             {
                 await TodayCommand(context);
+                return true;
+            }
+
+            if (normalizedCommand.Contains("добавить еду") || normalizedCommand == "/addcalories")
+            {
+                await ShowAddCaloriesMenuAsync(context);
+                return true;
+            }
+
+            if (normalizedCommand.Contains("добавить активность") || normalizedCommand == "/addactivity")
+            {
+                await StartManualActivityScenario(context); 
+                return true;
+            }
+
+            if (normalizedCommand.Contains("приём пищи") || normalizedCommand.Contains("прием пищи") || normalizedCommand == "/addmeal")
+            {
+                await StartAddMealScenario(context);
                 return true;
             }
 
@@ -70,18 +81,6 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            if (normalizedCommand.Contains("добавить еду") || normalizedCommand == "/addcalories")
-            {
-                await ShowAddCaloriesMenuAsync(context);
-                return true;
-            }
-
-            if (normalizedCommand.Contains("приём пищи") || normalizedCommand.Contains("прием пищи") || normalizedCommand == "/addmeal")
-            {
-                await StartAddMealScenario(context);
-                return true;
-            }
-
             if (normalizedCommand.Contains("распознать блюдо по фото") || normalizedCommand == "/foodphoto")
             {
                 await StartFoodPhotoFlow(context);
@@ -94,7 +93,7 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            if (normalizedCommand.Contains("время питания") || normalizedCommand.Contains("время питания") || normalizedCommand == "/setmeals")
+            if (normalizedCommand.Contains("время питания") || normalizedCommand == "/setmeals")
             {
                 await StartMealTimeSetupAsync(context);
                 return true;
@@ -130,13 +129,12 @@ namespace FitnessBot.TelegramBot.Handlers
                 return true;
             }
 
-            // Админские кнопки - пропускаем дальше к AdminCommandsHandler
             if (normalizedCommand.Contains("админ"))
             {
                 return false;
             }
 
-            Console.WriteLine($"DEBUG: Команда не распознана");
+            Console.WriteLine("DEBUG: Команда не распознана");
             return false;
         }
 
@@ -144,20 +142,50 @@ namespace FitnessBot.TelegramBot.Handlers
         {
             var rows = new List<List<KeyboardButton>>
     {
-        // Основные команды
-        new() { new KeyboardButton("📊 Сегодня"), new KeyboardButton("📈 Отчёт") },
-        new() { new KeyboardButton("⚖️ ИМТ"), new KeyboardButton("🍽️ Добавить еду") },
-        new() { new KeyboardButton("🥗 Приём пищи"), new KeyboardButton("🎯 Цель дня") },
+        // Самое частое: сегодня + быстрые действия
+        new()
+        {
+            new KeyboardButton("📊 Сегодня"),
+            new KeyboardButton("🍽️ Добавить еду")
+        },
+        new()
+        {
+            new KeyboardButton("🏃 Добавить активность"),
+            new KeyboardButton("🥗 Приём пищи")
+        },
 
-        // НОВОЕ: распознавание по фото
-        new() { new KeyboardButton("📷 Распознать блюдо по фото") },
+        // Аналитика
+        new()
+        {
+            new KeyboardButton("📈 Отчёт"),
+            new KeyboardButton("📊 Графики")
+        },
+
+        // Здоровье и фото
+        new()
+        {
+            new KeyboardButton("⚖️ ИМТ"),
+            new KeyboardButton("📷 Распознать блюдо по фото")
+        },
 
         // Настройки
-        new() { new KeyboardButton("🕐 Время питания"), new KeyboardButton("⏰ Напоминания") },
-        new() { new KeyboardButton("✏️ Профиль"), new KeyboardButton("📊 Графики") },
+        new()
+        {
+            new KeyboardButton("🎯 Цель дня"),
+            new KeyboardButton("🕐 Время питания")
+        },
+        new()
+        {
+            new KeyboardButton("⏰ Напоминания"),
+            new KeyboardButton("✏️ Профиль")
+        },
 
         // Интеграции и помощь
-        new() { new KeyboardButton("🔗 Google Fit"), new KeyboardButton("ℹ️ Помощь") }
+        new()
+        {
+            new KeyboardButton("🔗 Google Fit"),
+            new KeyboardButton("ℹ️ Помощь")
+        }
     };
 
             if (ctx.User.Role == UserRole.Admin)
@@ -177,22 +205,24 @@ namespace FitnessBot.TelegramBot.Handlers
             await ctx.Bot.SendMessage(
                 ctx.ChatId,
                 $"👋 Привет, {ctx.User.Name}!\n\n" +
-                "🏃‍♂️ **Основные команды:**\n" +
+                "🏃‍♂️ Основные действия:\n" +
                 "• 📊 Сегодня — статистика за день\n" +
                 "• 🍽️ Добавить еду — быстрое добавление\n" +
-                "• 🥗 Приём пищи — полная запись с БЖУ\n" +
-                "• 📷 Распознать блюдо по фото — отправьте фото блюда\n\n" +
-                "📈 **Графики и отчёты:**\n" +
-                "• 📊 Графики — визуализация прогресса\n" +
-                "• 📈 Отчёт — краткий отчёт за период\n\n" +
-                "⚙️ **Настройки:**\n" +
+                "• 🏃 Добавить активность — ходьба, тренировки\n" +
+                "• 🥗 Приём пищи — полная запись с БЖУ\n\n" +
+                "📈 Аналитика:\n" +
+                "• 📈 Отчёт — краткий отчёт за период\n" +
+                "• 📊 Графики — визуализация прогресса\n\n" +
+                "⚙️ Настройки и здоровье:\n" +
                 "• 🎯 Цель дня — установить дневную цель\n" +
-                "• ⏰ Напоминания — настроить уведомления\n" +
-                "• 🕐 Время приёмов — расписание питания\n\n" +
+                "• 🕐 Время питания — расписание приёмов\n" +
+                "• ⏰ Напоминания — уведомления\n" +
+                "• ⚖️ ИМТ — индекс массы тела\n\n" +
                 "ℹ️ Используйте кнопки меню или /help для справки",
                 replyMarkup: keyboard,
                 cancellationToken: default);
         }
+
 
 
         private async Task HelpCommand(UpdateContext ctx)
@@ -356,8 +386,10 @@ namespace FitnessBot.TelegramBot.Handlers
             var eatenCount = meals.Count;
 
             // ИСПОЛЬЗУЕМ ActivityService вместо репозитория
-            var (burnedCalories, steps) = await _activityService.GetMergedTotalsAsync(userId, today, tomorrow);
-
+            var totals = await _activityService.GetMergedTotalsAsync(userId, today, tomorrow);
+            
+            var burnedCalories = totals.caloriesOut;
+            var steps = totals.steps;
             var netCalories = eatenCalories - burnedCalories;
             var balanceEmoji = netCalories > 0 ? "📈" : netCalories < 0 ? "📉" : "➡️";
 
@@ -498,7 +530,7 @@ namespace FitnessBot.TelegramBot.Handlers
             var firstDay = new DateTime(year, month, 1);
             var daysInMonth = DateTime.DaysInMonth(year, month);
             var startDayOfWeek = (int)firstDay.DayOfWeek;
-            if (startDayOfWeek == 0) startDayOfWeek = 7; // Воскресенье = 7
+            if (startDayOfWeek == 0) startDayOfWeek = 7; 
 
             var buttons = new List<InlineKeyboardButton[]>();
 
@@ -698,6 +730,21 @@ namespace FitnessBot.TelegramBot.Handlers
             await _contextRepository.SetContext(ctx.User.Id, context, default);
 
             var scenario = GetScenario(ScenarioType.SetDailyGoal);
+            await scenario.HandleMessageAsync(ctx.Bot, context, ctx.Message, default);
+        }
+
+        private async Task StartManualActivityScenario(UpdateContext ctx)
+        {
+            var context = new ScenarioContext
+            {
+                UserId = ctx.User.Id,
+                CurrentScenario = ScenarioType.ManualActivity,
+                CurrentStep = 0
+            };
+
+            await _contextRepository.SetContext(ctx.User.Id, context, default);
+
+            var scenario = GetScenario(ScenarioType.ManualActivity);
             await scenario.HandleMessageAsync(ctx.Bot, context, ctx.Message, default);
         }
 

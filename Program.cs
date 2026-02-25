@@ -46,6 +46,7 @@ namespace FitnessBot
             var activityRepo = new PgActivityRepository(dataContextFactory);
             var nutritionRepo = new PgNutritionRepository(dataContextFactory);
 
+
             // 4. NotificationService
             var notificationService = new NotificationService(
                 notificationRepo,
@@ -91,7 +92,8 @@ namespace FitnessBot
             new EditProfileAgeScenario(userService),
             new EditProfileCityScenario(userService),
             new EditProfileHeightWeightScenario(bmiService),
-            new PhotoMealGramsScenario (nutritionService,userService)
+            new PhotoMealGramsScenario (nutritionService,userService),
+            new ManualActivityScenario (activityService),
             };
 
             // 7. Telegram bot
@@ -134,7 +136,8 @@ namespace FitnessBot
             new ReportCallbackHandler(nutritionRepo, activityRepo, reportService),
             new ProfileCallbackHandler(userService, bmiService, contextRepository),
             new BmiCallbackHandler(contextRepository),
-            customCaloriesCallbackHandler
+            customCaloriesCallbackHandler,
+            new ActivityCallbackHandler(contextRepository)
             };
             
             var photoHandlers = new IPhotoHandler[]

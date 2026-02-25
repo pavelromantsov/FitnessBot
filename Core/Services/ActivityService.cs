@@ -12,18 +12,26 @@ namespace FitnessBot.Core.Services
             _activities = activities;
         }
 
-        public Task AddAsync(long userId, int steps, int activeMinutes, double caloriesBurned, string source)
+        public Task AddAsync(long userId,
+                            int steps,
+                            int activeMinutes,
+                            double caloriesBurned,
+                            string source = "manual",
+                            ActivityType type = ActivityType.StepsBased, 
+                            DateTime? date = null,
+                            string? name = null)
         {
             var activity = new Activity
             {
                 UserId = userId,
-                Date = DateTime.UtcNow.Date,
+                Date = date?.Date ?? DateTime.UtcNow.Date,
                 Steps = steps,
                 ActiveMinutes = activeMinutes,
                 CaloriesBurned = caloriesBurned,
-                Source = source
+                Source = source,
+                Type = type,
+                Name = name
             };
-
             return _activities.AddAsync(activity);
         }
 
@@ -31,35 +39,28 @@ namespace FitnessBot.Core.Services
             _activities.GetByUserAndPeriodAsync(userId, from, to);
 
         public async Task<(double caloriesOut, int steps)> GetMergedTotalsAsync(
-                    long userId,
-                    DateTime from,
-                    DateTime to)
+    long userId,
+    DateTime from,
+    DateTime to)
         {
+            // Получаем ВСЕ активности за период (без фильтрации по источнику)
             var list = await _activities.GetByUserAndPeriodAsync(userId, from, to);
 
-            var grouped = list
-                .GroupBy(a => a.Date.Date)
-                .Select(g =>
-                {
-                    var google = g.Where(a => a.Source == "googlefit").ToList();
-                    var selected = google.Any() ? google : g.ToList();
+            // Шаги: только из StepsBased активностей (ходьба/бег)
+            var totalSteps = list
+                .Where(a => a.Type == ActivityType.StepsBased)
+                .Sum(a => a.Steps);
 
-                    return new
-                    {
-                        Date = g.Key,
-                        Steps = selected.Sum(a => a.Steps),
-                        Calories = selected.Sum(a => a.CaloriesBurned)
-                    };
-                })
-                .ToList();
-
-            var totalCalories = grouped.Sum(x => x.Calories);
-            var totalSteps = grouped.Sum(x => x.Steps);
+            // Калории: из ВСЕХ активностей (Google Fit + ручные тренировки)
+            var totalCalories = list.Sum(a => a.CaloriesBurned);
 
             return (totalCalories, totalSteps);
         }
 
-        public async Task<IReadOnlyList<Activity>> GetMergedForPeriodAsync(long userId, DateTime from, DateTime to)
+        public async Task<IReadOnlyList<Activity>> GetMergedForPeriodAsync(
+    long userId,
+    DateTime from,
+    DateTime to)
         {
             var list = await _activities.GetByUserAndPeriodAsync(userId, from, to);
 
@@ -67,17 +68,29 @@ namespace FitnessBot.Core.Services
                 .GroupBy(a => a.Date.Date)
                 .Select(g =>
                 {
-                    var google = g.Where(a => a.Source == "googlefit").ToList();
-                    var selected = google.Any() ? google : g.ToList();
+                    // суммируем все источники за день
 
                     return new Activity
                     {
                         UserId = userId,
                         Date = g.Key,
-                        Steps = selected.Sum(a => a.Steps),
-                        ActiveMinutes = selected.Sum(a => a.ActiveMinutes),
-                        CaloriesBurned = selected.Sum(a => a.CaloriesBurned),
-                        Source = google.Any() ? "googlefit" : "manual"
+
+                        // Шаги: суммируем только StepsBased активности (ходьба/бег)
+                        Steps = g
+                            .Where(a => a.Type == ActivityType.StepsBased)
+                            .Sum(a => a.Steps),
+
+                        // Время и калории: суммируем ВСЕ типы активностей
+                        ActiveMinutes = g.Sum(a => a.ActiveMinutes),
+                        CaloriesBurned = g.Sum(a => a.CaloriesBurned),
+
+                        // Источник: если есть Google Fit — показываем его, иначе manual
+                        Source = g.Any(a => a.Source == "googlefit") ? "googlefit" : "manual",
+
+                        // Тип: если есть TimeBased — показываем тренировку
+                        Type = g.Any(a => a.Type == ActivityType.TimeBased)
+                            ? ActivityType.TimeBased
+                            : ActivityType.StepsBased
                     };
                 })
                 .OrderBy(a => a.Date)

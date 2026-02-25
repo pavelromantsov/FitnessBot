@@ -11,5 +11,6 @@
         public double BaseCarbs { get; set; }
         public double ServingSizeGrams { get; set; } 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public string? DishName { get; set; }
     }
 }

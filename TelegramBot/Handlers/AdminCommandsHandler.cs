@@ -174,10 +174,11 @@ namespace FitnessBot.TelegramBot.Handlers
             var lines = users
                 .OrderByDescending(u => u.LastActivityAt)
                 .Select(u =>
-                    $"Id={u.Id}, Tg={u.TelegramId}, " +
-                    $"Имя={u.Name}, Роль={u.Role}, " +
-                    $"Город={u.City ?? "-"}, Возраст={u.Age?.ToString() ?? "-"}, " +
-                    $"Последняя активность={u.LastActivityAt:dd.MM HH:mm}");
+                    $"*****************************\n" +
+                    $"Id={u.Id}, Tg={u.TelegramId}, \n" +
+                    $"Имя={u.Name}, Роль={u.Role}, \n" +
+                    $"Город={u.City ?? "-"}, Возраст={u.Age?.ToString() ?? "-"}, \n" +
+                    $"Последняя активность={u.LastActivityAt:dd.MM HH:mm}\n");
 
             var text = "Список пользователей:\n" + string.Join("\n", lines);
             await ctx.Bot.SendMessage(
@@ -208,6 +209,7 @@ namespace FitnessBot.TelegramBot.Handlers
             }
 
             var text =
+                $"*****************************\n" +
                 $"Пользователь:\n" +
                 $"Id: {user.Id}\n" +
                 $"TelegramId: {user.TelegramId}\n" +
@@ -388,6 +390,7 @@ namespace FitnessBot.TelegramBot.Handlers
                         "давно";
 
                     return
+                        $"-------------------------------" +
                         $"Id={u.Id}, Tg={u.TelegramId}, Имя={u.Name},\n" +
                         $"  Последняя активность: {u.LastActivityAt:dd.MM.yyyy HH:mm} " +
                         $"UTC ({status})";
